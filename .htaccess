@@ -1,0 +1,16 @@
+Options +SymLinksIfOwnerMatch
+RewriteEngine On
+
+# Allow Installatron requests
+RewriteCond %{REQUEST_FILENAME} deleteme\.\w+\.php
+RewriteRule (.*) - [L]
+
+# Requests already targeting public/ — serve directly and stop
+RewriteRule ^public/ - [L]
+
+# Serve static files from public/ if they exist (CSS, JS, images, fonts)
+RewriteCond %{DOCUMENT_ROOT}/public%{REQUEST_URI} -f
+RewriteRule ^(.*)$ public/$1 [L]
+
+# Route everything else through Laravel
+RewriteRule ^ index.php [L]
