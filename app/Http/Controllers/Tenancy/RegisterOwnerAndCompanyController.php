@@ -31,10 +31,11 @@ final class RegisterOwnerAndCompanyController
         if (! $request->expectsJson()) {
             Auth::login($result->user);
             $request->session()->regenerate();
+            $result->user->sendEmailVerificationNotification();
 
             return redirect()
-                ->route('dashboard')
-                ->with('status', 'Conta criada com sucesso.');
+                ->route('verification.notice')
+                ->with('status', 'Conta criada com sucesso. Confirme seu e-mail para acessar o painel.');
         }
 
         return response()->json([

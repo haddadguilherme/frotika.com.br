@@ -36,6 +36,12 @@
                     Permanecer conectado
                 </label>
 
+                <p class="text-right text-sm">
+                    <a href="{{ route('password.request') }}" class="font-medium text-brand-700 hover:text-brand-800">
+                        Esqueci minha senha
+                    </a>
+                </p>
+
                 <x-ui.button type="submit" class="w-full justify-center">
                     Entrar
                 </x-ui.button>

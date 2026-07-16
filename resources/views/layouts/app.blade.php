@@ -11,6 +11,12 @@
 </head>
 
 <body class="min-h-screen bg-slate-100 font-sans text-slate-900 antialiased">
+    @php
+        $topbarCompanies = $topbarCompanies ?? collect();
+        $topbarCurrentCompanyId = $topbarCurrentCompanyId ?? null;
+        $topbarCurrentCompanyName = $topbarCurrentCompanyName ?? 'Empresa ativa';
+    @endphp
+
     <div class="lg:grid lg:min-h-screen lg:grid-cols-[264px_1fr]">
         <aside
             class="hidden lg:flex lg:flex-col lg:justify-between lg:bg-linear-to-b lg:from-brand-950 lg:to-brand-900 lg:px-4 lg:py-5 lg:text-brand-100">
@@ -65,7 +71,41 @@
 
         <div class="flex min-h-screen flex-col">
             <header class="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
-                <div class="mx-auto flex h-16 w-full items-center justify-between px-4 sm:px-6 lg:px-8">
+                <div class="mx-auto flex w-full flex-col gap-3 px-4 py-3 sm:px-6 lg:px-8">
+                    <div class="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Empresa ativa</p>
+
+                            @if ($topbarCompanies->count() > 1)
+                                <form method="POST" action="{{ route('tenancy.switch-company') }}" class="mt-1 flex items-center gap-2">
+                                    @csrf
+                                    <select
+                                        name="company_id"
+                                        class="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                                        onchange="this.form.requestSubmit()"
+                                    >
+                                        @foreach ($topbarCompanies as $companyOption)
+                                            <option
+                                                value="{{ $companyOption->getKey() }}"
+                                                @selected((int) $topbarCurrentCompanyId === $companyOption->getKey())
+                                            >
+                                                {{ $companyOption->getAttribute('trade_name') }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+
+                                    <x-ui.button type="submit" variant="secondary" size="sm" class="sm:hidden">
+                                        Trocar
+                                    </x-ui.button>
+                                </form>
+                            @else
+                                <p class="mt-1 text-sm font-semibold text-slate-900">{{ $topbarCurrentCompanyName }}</p>
+                            @endif
+                        </div>
+
+                        <a href="{{ route('welcome') }}" class="text-sm font-medium text-brand-700 hover:text-brand-800">Site</a>
+                    </div>
+
                     <div>
                         <p class="text-sm font-medium text-slate-500">Atalhos rapidos</p>
                         <div class="mt-1 flex flex-wrap items-center gap-2">
@@ -83,13 +123,16 @@
                                 CT-e</button>
                         </div>
                     </div>
-
-                    <a href="{{ route('welcome') }}"
-                        class="text-sm font-medium text-brand-700 hover:text-brand-800">Site</a>
                 </div>
             </header>
 
             <main class="flex-1 px-4 py-6 sm:px-6 lg:px-8">
+                @if (session('status'))
+                    <div class="mb-4 rounded-md border border-success-700/30 bg-success-700/10 px-4 py-3 text-sm font-medium text-success-700">
+                        {{ session('status') }}
+                    </div>
+                @endif
+
                 @yield('content')
             </main>
         </div>

@@ -144,4 +144,59 @@
 ### Validacoes da etapa 0.6
 
 - `vendor/bin/pint --dirty`
-- Execucao de PHPUnit pendente no ambiente local (suite bloqueada por configuracao/infra de teste nesta sessao).
+- `vendor/bin/phpunit tests/Feature/Tenancy/SetTenantContextMiddlewareTest.php tests/Feature/Tenancy/SwitchCurrentCompanyTest.php`
+- `composer test`
+
+## 2026-07-16 - Etapa 0.7 (esqueci a senha + redefinicao)
+
+### Entregas da etapa 0.7
+
+- Adicionadas rotas publicas em pt-BR para recuperacao de senha: `GET/POST /esqueci-a-senha`, `GET /redefinir-senha/{token}` e `POST /redefinir-senha`.
+- Criados os requests `ForgotPasswordRequest` e `ResetPasswordRequest` com validacoes e mensagens em pt-BR.
+- Concluido fluxo de controllers de auth para recuperacao: exibicao do formulario, envio de link e redefinicao de senha.
+- Criadas as views `auth/forgot-password` e `auth/reset-password`, integradas ao layout guest e aos componentes UI.
+- Tela de login recebeu atalho direto para o fluxo "Esqueci minha senha".
+- Adicionada cobertura feature de ponta a ponta em `PasswordResetFlowTest` para tela, envio do link, redefinicao com token valido e bloqueio com token invalido.
+
+### Validacoes da etapa 0.7
+
+- `vendor/bin/pint --dirty`
+- `vendor/bin/phpunit tests/Feature/Auth/PasswordResetFlowTest.php`
+- `composer test`
+
+## 2026-07-16 - Etapa 0.8 (autenticacao base validada)
+
+### Entregas da etapa 0.8
+
+- Criada cobertura feature de autenticacao em `AuthenticationFlowTest` para os cenarios de acesso protegido, login com sucesso, falha de login e logout.
+- Fluxo de acesso consolidado com validacao de redirecionamento de anonimo para `/entrar` ao tentar abrir `/painel`.
+- Revalidado o conjunto de testes de auth com `AuthenticationFlowTest` + `PasswordResetFlowTest` para garantir consistencia entre login e recuperacao de senha.
+
+### Validacoes da etapa 0.8
+
+- `vendor/bin/pint --dirty`
+- `vendor/bin/phpunit tests/Feature/Auth/AuthenticationFlowTest.php tests/Feature/Auth/PasswordResetFlowTest.php`
+- `composer test`
+
+## 2026-07-16 - Etapa 0.9 (confirmacao de e-mail no onboarding/login)
+
+### Entregas da etapa 0.9
+
+- `User` passou a implementar `MustVerifyEmail`, habilitando o contrato nativo de verificacao de e-mail do Laravel.
+- Fluxo de onboarding web atualizado para enviar notificacao de confirmacao e redirecionar para a tela de confirmacao em vez de liberar acesso direto ao painel.
+- Adicionadas rotas autenticadas de verificacao com URLs em pt-BR: tela de aviso (`/confirmar-email`), reenvio de notificacao (`POST /confirmar-email/notificacao`) e confirmacao assinada (`GET /confirmar-email/{id}/{hash}`).
+- Painel (`/painel`) e troca de empresa (`/empresa-atual`) passaram a exigir middleware `verified`.
+- Criados controllers de verificacao: `ShowVerifyEmailController`, `SendVerificationEmailController` e `VerifyEmailController`.
+- Criada a view `auth/verify-email` integrada ao layout guest e componentes de UI.
+- Adicionada cobertura feature em `EmailVerificationFlowTest` para:
+	- redirecionamento de usuario nao verificado ao tentar acessar painel,
+	- carregamento da tela de confirmacao,
+	- reenvio de notificacao,
+	- confirmacao por link assinado,
+	- envio de notificacao no registro web.
+
+### Validacoes da etapa 0.9
+
+- `vendor/bin/pint --dirty`
+- `vendor/bin/phpunit tests/Feature/Auth/EmailVerificationFlowTest.php tests/Feature/Auth/AuthenticationFlowTest.php tests/Feature/Auth/PasswordResetFlowTest.php`
+- `composer test`
