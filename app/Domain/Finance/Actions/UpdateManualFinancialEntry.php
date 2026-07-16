@@ -8,6 +8,7 @@ use App\Domain\Finance\Enums\FinancialCategoryType;
 use App\Domain\Finance\Models\BankAccount;
 use App\Domain\Finance\Models\FinancialCategory;
 use App\Domain\Finance\Models\FinancialEntry;
+use App\Domain\Finance\Models\Recurrence;
 use App\Domain\Tenancy\Models\Company;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Support\Facades\Validator;
@@ -76,7 +77,33 @@ final class UpdateManualFinancialEntry
                 ]);
             }
 
+            $pairEntry = null;
+            $isTransferEntry = $entry->transfer_pair_id !== null;
+
+            if ($isTransferEntry) {
+                $pairEntry = FinancialEntry::query()->find((int) $entry->transfer_pair_id);
+
+                if ($pairEntry === null) {
+                    throw ValidationException::withMessages([
+                        'transfer_pair_id' => 'Par da transferencia nao encontrado para a empresa ativa.',
+                    ]);
+                }
+
+                if ($pairEntry->sourceable_type !== null || $pairEntry->sourceable_id !== null) {
+                    throw ValidationException::withMessages([
+                        'transfer_pair_id' => 'Transferencias sincronizadas devem ser alteradas na origem.',
+                    ]);
+                }
+
+                if ((int) $pairEntry->transfer_pair_id !== (int) $entry->getKey()) {
+                    throw ValidationException::withMessages([
+                        'transfer_pair_id' => 'Par de transferencia invalido para edicao.',
+                    ]);
+                }
+            }
+
             $previousBankAccountId = $entry->bank_account_id !== null ? (int) $entry->bank_account_id : null;
+            $previousPairBankAccountId = $pairEntry?->bank_account_id !== null ? (int) $pairEntry->bank_account_id : null;
 
             $category = FinancialCategory::query()->find($validated['financial_category_id']);
 
@@ -95,9 +122,27 @@ final class UpdateManualFinancialEntry
             /** @var FinancialCategoryType $categoryType */
             $categoryType = $category->type;
 
-            if ($categoryType->value !== $validated['type']) {
+            if ($isTransferEntry && $category->code !== '8.4') {
+                throw ValidationException::withMessages([
+                    'financial_category_id' => 'Transferencias devem usar a categoria 8.4.',
+                ]);
+            }
+
+            if (! $isTransferEntry && $categoryType->value !== $validated['type']) {
                 throw ValidationException::withMessages([
                     'type' => 'Tipo do lancamento deve ser igual ao tipo da categoria.',
+                ]);
+            }
+
+            if ($isTransferEntry && $entry->type->value !== $validated['type']) {
+                throw ValidationException::withMessages([
+                    'type' => 'Nao e permitido trocar o tipo de um lancamento de transferencia.',
+                ]);
+            }
+
+            if ($isTransferEntry && $validated['status'] !== 'settled') {
+                throw ValidationException::withMessages([
+                    'status' => 'Transferencias entre contas devem permanecer liquidadas.',
                 ]);
             }
 
@@ -135,6 +180,34 @@ final class UpdateManualFinancialEntry
                 }
             }
 
+            if (($validated['recurrence_id'] ?? null) !== null) {
+                $recurrence = Recurrence::query()->find($validated['recurrence_id']);
+
+                if ($recurrence === null || ! $recurrence->active) {
+                    throw ValidationException::withMessages([
+                        'recurrence_id' => 'Recorrencia invalida para a empresa ativa.',
+                    ]);
+                }
+
+                if ($recurrence->type->value !== $validated['type']) {
+                    throw ValidationException::withMessages([
+                        'recurrence_id' => 'Recorrencia deve possuir o mesmo tipo do lancamento.',
+                    ]);
+                }
+
+                if ((int) $recurrence->financial_category_id !== (int) $validated['financial_category_id']) {
+                    throw ValidationException::withMessages([
+                        'recurrence_id' => 'Recorrencia deve possuir a mesma categoria do lancamento.',
+                    ]);
+                }
+            }
+
+            if ($isTransferEntry && $pairEntry?->bank_account_id !== null && (int) $validated['bank_account_id'] === (int) $pairEntry->bank_account_id) {
+                throw ValidationException::withMessages([
+                    'bank_account_id' => 'Conta de origem e destino da transferencia devem ser diferentes.',
+                ]);
+            }
+
             $entry->forceFill([
                 'bank_account_id' => $validated['bank_account_id'] ?? null,
                 'financial_category_id' => $validated['financial_category_id'],
@@ -155,9 +228,26 @@ final class UpdateManualFinancialEntry
                 'reconciled_at' => null,
             ])->save();
 
+            if ($isTransferEntry && $pairEntry !== null) {
+                $pairEntry->forceFill([
+                    'financial_category_id' => $validated['financial_category_id'],
+                    'description' => $validated['description'],
+                    'document_number' => $validated['document_number'] ?? null,
+                    'competence_date' => $validated['competence_date'],
+                    'due_date' => $validated['due_date'] ?? null,
+                    'paid_at' => $validated['paid_at'] ?? null,
+                    'amount_cents' => $validated['amount_cents'],
+                    'status' => $validated['status'],
+                    'payment_method' => $validated['payment_method'] ?? null,
+                    'reconciled_at' => null,
+                ])->save();
+            }
+
             $affectedBankAccountIds = array_values(array_unique(array_filter([
                 $previousBankAccountId,
                 $entry->bank_account_id !== null ? (int) $entry->bank_account_id : null,
+                $previousPairBankAccountId,
+                $pairEntry?->bank_account_id !== null ? (int) $pairEntry->bank_account_id : null,
             ], static fn ($bankAccountId): bool => $bankAccountId !== null)));
 
             foreach ($affectedBankAccountIds as $bankAccountId) {

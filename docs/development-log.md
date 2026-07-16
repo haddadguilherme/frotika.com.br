@@ -87,6 +87,21 @@
 - Adicionado teste de console para validar o modo aplicacao (persiste saldo) e o modo simulacao (`dry-run`, sem persistencia).
 - Criada action `BuildCashFlowMatrix` para montar matriz dia x conta com saldo de abertura, entradas/saidas diarias, saldo acumulado e filtro de contas por periodo.
 - Adicionado suporte ao toggle de previstos na matriz (inclui `forecast` com `due_date` e fallback em `competence_date`) e teste cobrindo o comportamento.
+- Criada action `CreateTransferBetweenBankAccounts` para gerar transferencia entre contas em transacao unica, criando o par de lancamentos (`expense` origem e `revenue` destino) com vinculo cruzado em `transfer_pair_id`.
+- Adicionado teste dedicado da transferencia cobrindo criacao do par, recálculo de saldo nas duas contas e validacoes de isolamento por tenant/contas invalidas.
+- Action `UpdateManualFinancialEntry` passou a propagar edicoes para o par quando o lancamento possui `transfer_pair_id`, mantendo os dois lados consistentes e recalculando saldos das contas afetadas.
+- Action `CancelFinancialEntry` passou a cancelar automaticamente o par de transferencia na mesma operacao, com recálculo de saldo das duas contas.
+- Cobertura de testes ampliada para garantir que editar/cancelar um lado da transferencia afeta o par conforme a regra da secao 8.4 do blueprint.
+- Action `BuildCashFlowMatrix` passou a aceitar filtros opcionais de categoria, veiculo e status, cobrindo o contrato de filtros definido para a tela de fluxo de caixa na secao 8.3.
+- Adicionados testes para filtros combinados (categoria + veiculo + status) e validacao de status invalido na consulta da matriz.
+- Action `BuildCashFlowMatrix` passou a retornar metadados de filtros aplicados e totais consolidados (global e por conta), facilitando o consumo pela futura tela de fluxo de caixa.
+- Criada migration `recurrences` e novo model `Recurrence` com enum `RecurrenceFrequency` para suportar lancamentos recorrentes previstos.
+- Criada action `CreateRecurrence` com validacoes de categoria/tipo/frequencia e isolamento por tenant.
+- Criada action `GenerateForecastEntriesFromRecurrences` com geracao idempotente de lancamentos `forecast` por recorrencia ativa, respeitando janela mensal, fim de vigencia e limite de parcelas.
+- Implementado comando `frotika:generate-recurrences` com opcoes `--company`, `--reference-date` e `--dry-run`.
+- Agendadas rotinas financeiras no scheduler: `frotika:generate-recurrences` (mensal) e `frotika:recalculate-balances` (diario).
+- Actions `CreateManualFinancialEntry` e `UpdateManualFinancialEntry` passaram a validar `recurrence_id` (tenant ativo, tipo e categoria compativeis) para impedir vinculos inconsistentes.
+- Cobertura de testes ampliada para cadastro de recorrencia, geracao idempotente (incluindo dry-run), comando de geracao e isolamento de `recurrence_id` em create/update manual.
 
 ### Validacoes da etapa 0.4
 

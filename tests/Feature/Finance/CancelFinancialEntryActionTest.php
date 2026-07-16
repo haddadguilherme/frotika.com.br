@@ -78,6 +78,54 @@ final class CancelFinancialEntryActionTest extends TestCase
         ]);
     }
 
+    public function test_cancela_transferencia_e_tambem_cancela_o_par(): void
+    {
+        $company = $this->createCompany(750);
+        [$originBankAccountId, $destinationBankAccountId, $expenseEntryId, $revenueEntryId] = $this->createTransferPairEntry($company);
+
+        $tenant = app(TenantContext::class);
+        $tenant->runFor($company, function () use ($originBankAccountId, $destinationBankAccountId): void {
+            BankAccount::query()->whereKey($originBankAccountId)->update([
+                'current_balance_cents' => 1,
+            ]);
+
+            BankAccount::query()->whereKey($destinationBankAccountId)->update([
+                'current_balance_cents' => 1,
+            ]);
+        });
+
+        $action = app(CancelFinancialEntry::class);
+        $action->execute($company, $expenseEntryId);
+
+        $this->assertDatabaseHas('financial_entries', [
+            'id' => $expenseEntryId,
+            'company_id' => $company->getKey(),
+            'status' => 'canceled',
+            'paid_at' => null,
+            'bank_account_id' => null,
+        ]);
+
+        $this->assertDatabaseHas('financial_entries', [
+            'id' => $revenueEntryId,
+            'company_id' => $company->getKey(),
+            'status' => 'canceled',
+            'paid_at' => null,
+            'bank_account_id' => null,
+        ]);
+
+        $this->assertDatabaseHas('bank_accounts', [
+            'id' => $originBankAccountId,
+            'company_id' => $company->getKey(),
+            'current_balance_cents' => 10000,
+        ]);
+
+        $this->assertDatabaseHas('bank_accounts', [
+            'id' => $destinationBankAccountId,
+            'company_id' => $company->getKey(),
+            'current_balance_cents' => 2000,
+        ]);
+    }
+
     private function createManualSettledEntry(Company $company): int
     {
         $tenant = app(TenantContext::class);
@@ -121,6 +169,88 @@ final class CancelFinancialEntryActionTest extends TestCase
             ]);
 
             return $entry->getKey();
+        });
+    }
+
+    /**
+     * @return array{0: int, 1: int, 2: int, 3: int}
+     */
+    private function createTransferPairEntry(Company $company): array
+    {
+        $tenant = app(TenantContext::class);
+
+        return $tenant->runFor($company, function (): array {
+            $transferCategory = FinancialCategory::query()->create([
+                'code' => '8.4',
+                'name' => 'Transferencia entre contas',
+                'type' => 'expense',
+                'dre_group' => 'non_operating',
+                'allocation' => 'non_vehicle',
+                'affects_cashflow' => true,
+                'is_system' => true,
+                'active' => true,
+                'sort_order' => 840,
+            ]);
+
+            $originAccount = BankAccount::query()->create([
+                'name' => 'Conta origem cancelamento',
+                'type' => 'cash',
+                'initial_balance_cents' => 10000,
+                'initial_balance_at' => '2026-07-01',
+                'current_balance_cents' => 0,
+                'is_default' => true,
+                'active' => true,
+            ]);
+
+            $destinationAccount = BankAccount::query()->create([
+                'name' => 'Conta destino cancelamento',
+                'type' => 'cash',
+                'initial_balance_cents' => 2000,
+                'initial_balance_at' => '2026-07-01',
+                'current_balance_cents' => 0,
+                'is_default' => false,
+                'active' => true,
+            ]);
+
+            $author = User::factory()->create();
+
+            $expenseEntry = FinancialEntry::query()->create([
+                'financial_category_id' => $transferCategory->getKey(),
+                'bank_account_id' => $originAccount->getKey(),
+                'type' => 'expense',
+                'description' => 'Transferencia para cancelar',
+                'competence_date' => '2026-07-15',
+                'paid_at' => '2026-07-15',
+                'amount_cents' => 3000,
+                'status' => 'settled',
+                'payment_method' => 'bank_transfer',
+                'created_by' => $author->getKey(),
+            ]);
+
+            $revenueEntry = FinancialEntry::query()->create([
+                'financial_category_id' => $transferCategory->getKey(),
+                'bank_account_id' => $destinationAccount->getKey(),
+                'type' => 'revenue',
+                'description' => 'Transferencia para cancelar',
+                'competence_date' => '2026-07-15',
+                'paid_at' => '2026-07-15',
+                'amount_cents' => 3000,
+                'status' => 'settled',
+                'payment_method' => 'bank_transfer',
+                'transfer_pair_id' => $expenseEntry->getKey(),
+                'created_by' => $author->getKey(),
+            ]);
+
+            $expenseEntry->forceFill([
+                'transfer_pair_id' => $revenueEntry->getKey(),
+            ])->save();
+
+            return [
+                $originAccount->getKey(),
+                $destinationAccount->getKey(),
+                $expenseEntry->getKey(),
+                $revenueEntry->getKey(),
+            ];
         });
     }
 

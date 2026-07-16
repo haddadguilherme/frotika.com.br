@@ -11,6 +11,7 @@ use App\Domain\Finance\Enums\FinancialEntryType;
 use App\Domain\Finance\Models\BankAccount;
 use App\Domain\Finance\Models\FinancialCategory;
 use App\Domain\Finance\Models\FinancialEntry;
+use App\Domain\Finance\Models\Recurrence;
 use App\Domain\Tenancy\Models\Company;
 use App\Domain\Tenancy\Models\Group;
 use App\Models\User;
@@ -127,6 +128,31 @@ final class CreateManualFinancialEntryActionTest extends TestCase
         $this->assertDatabaseCount('financial_entries', 0);
     }
 
+    public function test_rejeita_recorrencia_de_outra_empresa(): void
+    {
+        $companyA = $this->createCompany(301);
+        $companyB = $this->createCompany(302);
+        $createdBy = User::factory()->create();
+
+        [$categoryIdA] = $this->createFinanceBase($companyA, 'expense');
+        [$categoryIdB] = $this->createFinanceBase($companyB, 'expense');
+        $recurrenceIdFromB = $this->createRecurrence($companyB, $categoryIdB, 'expense');
+
+        $action = app(CreateManualFinancialEntry::class);
+
+        $this->expectException(ValidationException::class);
+
+        $action->execute($companyA, $createdBy->getKey(), [
+            'financial_category_id' => $categoryIdA,
+            'type' => 'expense',
+            'description' => 'Recorrencia de outra empresa',
+            'competence_date' => '2026-07-20',
+            'amount_cents' => 9000,
+            'status' => 'forecast',
+            'recurrence_id' => $recurrenceIdFromB,
+        ]);
+    }
+
     /**
      * @return array{0: int, 1: int}
      */
@@ -183,5 +209,29 @@ final class CreateManualFinancialEntryActionTest extends TestCase
             'trade_name' => 'Finance Empresa '.$seed,
             'tax_regime' => 'simples',
         ]);
+    }
+
+    private function createRecurrence(Company $company, int $categoryId, string $type): int
+    {
+        $tenant = app(TenantContext::class);
+
+        return $tenant->runFor($company, function () use ($categoryId, $type): int {
+            $author = User::factory()->create();
+
+            $recurrence = Recurrence::query()->create([
+                'financial_category_id' => $categoryId,
+                'type' => $type,
+                'description' => 'Recorrencia teste',
+                'amount_cents' => 5000,
+                'frequency' => 'monthly',
+                'day_of_month' => 10,
+                'starts_at' => '2026-07-01',
+                'installments_generated' => 0,
+                'active' => true,
+                'created_by' => $author->getKey(),
+            ]);
+
+            return (int) $recurrence->getKey();
+        });
     }
 }

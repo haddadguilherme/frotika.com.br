@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 final class BuildCashFlowMatrixActionTest extends TestCase
@@ -37,11 +38,28 @@ final class BuildCashFlowMatrixActionTest extends TestCase
         $matrix = $action->execute($company, '2026-07-10', '2026-07-13', false);
 
         $this->assertFalse($matrix['include_forecast']);
+        $this->assertSame([
+            'bank_account_ids' => [],
+            'financial_category_ids' => [],
+            'vehicle_ids' => [],
+            'statuses' => ['settled'],
+        ], $matrix['applied_filters']);
+
+        $this->assertSame([
+            'opening_balance_cents' => 5000,
+            'revenue_cents' => 2000,
+            'expense_cents' => 700,
+            'net_cents' => 1300,
+            'closing_balance_cents' => 6300,
+        ], $matrix['totals']);
         $this->assertCount(1, $matrix['accounts']);
 
         $account = $matrix['accounts'][0];
 
         $this->assertSame(5000, $account['opening_balance_cents']);
+        $this->assertSame(2000, $account['revenue_cents']);
+        $this->assertSame(700, $account['expense_cents']);
+        $this->assertSame(1300, $account['net_cents']);
         $this->assertSame(6300, $account['closing_balance_cents']);
         $this->assertSame(-700, $account['days'][0]['net_cents']);
         $this->assertSame(2000, $account['days'][1]['net_cents']);
@@ -78,6 +96,76 @@ final class BuildCashFlowMatrixActionTest extends TestCase
         $this->assertSame(6400, $account['closing_balance_cents']);
         $this->assertSame(-300, $account['days'][2]['net_cents']);
         $this->assertSame(400, $account['days'][3]['net_cents']);
+    }
+
+    public function test_aplica_filtros_de_categoria_veiculo_e_status(): void
+    {
+        $company = $this->createCompany(1500);
+        [$bankAccountId, $expenseCategoryId, $revenueCategoryId] = $this->createFinanceBase($company);
+
+        $this->createEntry($company, $bankAccountId, $expenseCategoryId, 'expense', 'settled', 100, '2026-07-09', null, 99);
+        $this->createEntry($company, $bankAccountId, $expenseCategoryId, 'expense', 'settled', 700, '2026-07-10', null, 99);
+        $this->createEntry($company, $bankAccountId, $revenueCategoryId, 'revenue', 'settled', 2000, '2026-07-11', null, 99);
+        $this->createEntry($company, $bankAccountId, $expenseCategoryId, 'expense', 'settled', 500, '2026-07-11', null, 88);
+        $this->createEntry($company, $bankAccountId, $expenseCategoryId, 'expense', 'forecast', 300, null, '2026-07-12', 99);
+
+        $action = app(BuildCashFlowMatrix::class);
+
+        $matrix = $action->execute(
+            $company,
+            '2026-07-10',
+            '2026-07-12',
+            true,
+            [$bankAccountId],
+            [$expenseCategoryId],
+            [99],
+            ['settled'],
+        );
+
+        $this->assertFalse($matrix['include_forecast']);
+        $this->assertSame([
+            'bank_account_ids' => [$bankAccountId],
+            'financial_category_ids' => [$expenseCategoryId],
+            'vehicle_ids' => [99],
+            'statuses' => ['settled'],
+        ], $matrix['applied_filters']);
+        $this->assertSame([
+            'opening_balance_cents' => 900,
+            'revenue_cents' => 0,
+            'expense_cents' => 700,
+            'net_cents' => -700,
+            'closing_balance_cents' => 200,
+        ], $matrix['totals']);
+        $this->assertCount(1, $matrix['accounts']);
+
+        $account = $matrix['accounts'][0];
+
+        $this->assertSame(900, $account['opening_balance_cents']);
+        $this->assertSame(200, $account['closing_balance_cents']);
+        $this->assertSame(-700, $account['days'][0]['net_cents']);
+        $this->assertSame(0, $account['days'][1]['net_cents']);
+        $this->assertSame(0, $account['days'][2]['net_cents']);
+    }
+
+    public function test_rejeita_status_invalido_no_filtro(): void
+    {
+        $company = $this->createCompany(1600);
+        [$bankAccountId] = $this->createFinanceBase($company);
+
+        $action = app(BuildCashFlowMatrix::class);
+
+        $this->expectException(ValidationException::class);
+
+        $action->execute(
+            $company,
+            '2026-07-10',
+            '2026-07-12',
+            true,
+            [$bankAccountId],
+            null,
+            null,
+            ['canceled'],
+        );
     }
 
     /**
@@ -169,15 +257,17 @@ final class BuildCashFlowMatrixActionTest extends TestCase
         int $amountCents,
         ?string $paidAt,
         ?string $dueDate,
+        ?int $vehicleId = null,
     ): void {
         $tenant = app(TenantContext::class);
 
-        $tenant->runFor($company, function () use ($bankAccountId, $categoryId, $type, $status, $amountCents, $paidAt, $dueDate): void {
+        $tenant->runFor($company, function () use ($bankAccountId, $categoryId, $type, $status, $amountCents, $paidAt, $dueDate, $vehicleId): void {
             $author = User::factory()->create();
 
             FinancialEntry::query()->create([
                 'financial_category_id' => $categoryId,
                 'bank_account_id' => $bankAccountId,
+                'vehicle_id' => $vehicleId,
                 'type' => $type,
                 'description' => 'Entrada para fluxo',
                 'competence_date' => '2026-07-13',

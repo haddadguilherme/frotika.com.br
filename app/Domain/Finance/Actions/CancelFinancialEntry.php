@@ -34,11 +34,30 @@ final class CancelFinancialEntry
                 ]);
             }
 
-            if ($entry->status === FinancialEntryStatus::Canceled) {
+            $pairEntry = null;
+
+            if ($entry->transfer_pair_id !== null) {
+                $pairEntry = FinancialEntry::query()->find((int) $entry->transfer_pair_id);
+
+                if ($pairEntry === null) {
+                    throw ValidationException::withMessages([
+                        'transfer_pair_id' => 'Par da transferencia nao encontrado para a empresa ativa.',
+                    ]);
+                }
+
+                if ($pairEntry->sourceable_type !== null || $pairEntry->sourceable_id !== null) {
+                    throw ValidationException::withMessages([
+                        'transfer_pair_id' => 'Transferencias sincronizadas devem ser canceladas na origem.',
+                    ]);
+                }
+            }
+
+            if ($entry->status === FinancialEntryStatus::Canceled && ($pairEntry === null || $pairEntry->status === FinancialEntryStatus::Canceled)) {
                 return;
             }
 
             $previousBankAccountId = $entry->bank_account_id !== null ? (int) $entry->bank_account_id : null;
+            $previousPairBankAccountId = $pairEntry?->bank_account_id !== null ? (int) $pairEntry->bank_account_id : null;
 
             $entry->forceFill([
                 'status' => FinancialEntryStatus::Canceled,
@@ -47,8 +66,22 @@ final class CancelFinancialEntry
                 'reconciled_at' => null,
             ])->save();
 
-            if ($previousBankAccountId !== null) {
-                $this->recalculateBankAccountCurrentBalance->execute($company, $previousBankAccountId);
+            if ($pairEntry !== null && $pairEntry->status !== FinancialEntryStatus::Canceled) {
+                $pairEntry->forceFill([
+                    'status' => FinancialEntryStatus::Canceled,
+                    'paid_at' => null,
+                    'bank_account_id' => null,
+                    'reconciled_at' => null,
+                ])->save();
+            }
+
+            $affectedBankAccountIds = array_values(array_unique(array_filter([
+                $previousBankAccountId,
+                $previousPairBankAccountId,
+            ], static fn ($bankAccountId): bool => $bankAccountId !== null)));
+
+            foreach ($affectedBankAccountIds as $bankAccountId) {
+                $this->recalculateBankAccountCurrentBalance->execute($company, $bankAccountId);
             }
         });
     }

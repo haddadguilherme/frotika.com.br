@@ -9,6 +9,7 @@ use App\Domain\Finance\Enums\FinancialEntryStatus;
 use App\Domain\Finance\Models\BankAccount;
 use App\Domain\Finance\Models\FinancialCategory;
 use App\Domain\Finance\Models\FinancialEntry;
+use App\Domain\Finance\Models\Recurrence;
 use App\Domain\Tenancy\Models\Company;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Support\Facades\Validator;
@@ -116,6 +117,28 @@ final class CreateManualFinancialEntry
                 if ($bankAccount === null || ! $bankAccount->active) {
                     throw ValidationException::withMessages([
                         'bank_account_id' => 'Conta bancaria invalida para a empresa ativa.',
+                    ]);
+                }
+            }
+
+            if (($validated['recurrence_id'] ?? null) !== null) {
+                $recurrence = Recurrence::query()->find($validated['recurrence_id']);
+
+                if ($recurrence === null || ! $recurrence->active) {
+                    throw ValidationException::withMessages([
+                        'recurrence_id' => 'Recorrencia invalida para a empresa ativa.',
+                    ]);
+                }
+
+                if ($recurrence->type->value !== $validated['type']) {
+                    throw ValidationException::withMessages([
+                        'recurrence_id' => 'Recorrencia deve possuir o mesmo tipo do lancamento.',
+                    ]);
+                }
+
+                if ((int) $recurrence->financial_category_id !== (int) $validated['financial_category_id']) {
+                    throw ValidationException::withMessages([
+                        'recurrence_id' => 'Recorrencia deve possuir a mesma categoria do lancamento.',
                     ]);
                 }
             }

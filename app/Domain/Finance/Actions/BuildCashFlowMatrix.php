@@ -21,14 +21,33 @@ final class BuildCashFlowMatrix
 
     /**
      * @param  list<int>|null  $bankAccountIds
+     * @param  list<int>|null  $financialCategoryIds
+     * @param  list<int>|null  $vehicleIds
+     * @param  list<string>|null  $statuses
      * @return array{
      *     from: string,
      *     to: string,
      *     include_forecast: bool,
+     *     applied_filters: array{
+     *         bank_account_ids: list<int>,
+     *         financial_category_ids: list<int>,
+     *         vehicle_ids: list<int>,
+     *         statuses: list<string>
+     *     },
+     *     totals: array{
+     *         opening_balance_cents: int,
+     *         revenue_cents: int,
+     *         expense_cents: int,
+     *         net_cents: int,
+     *         closing_balance_cents: int
+     *     },
      *     accounts: list<array{
      *         bank_account_id: int,
      *         name: string,
      *         opening_balance_cents: int,
+     *         revenue_cents: int,
+     *         expense_cents: int,
+     *         net_cents: int,
      *         closing_balance_cents: int,
      *         days: list<array{
      *             date: string,
@@ -46,6 +65,9 @@ final class BuildCashFlowMatrix
         string $toDate,
         bool $includeForecast = false,
         ?array $bankAccountIds = null,
+        ?array $financialCategoryIds = null,
+        ?array $vehicleIds = null,
+        ?array $statuses = null,
     ): array {
         $from = CarbonImmutable::parse($fromDate)->startOfDay();
         $to = CarbonImmutable::parse($toDate)->startOfDay();
@@ -56,11 +78,17 @@ final class BuildCashFlowMatrix
             ]);
         }
 
-        return $this->tenant->runFor($company, function () use ($from, $to, $includeForecast, $bankAccountIds): array {
+        $resolvedStatuses = $this->resolveStatuses($includeForecast, $statuses);
+        $resolvedIncludeForecast = in_array(FinancialEntryStatus::Forecast->value, $resolvedStatuses, true);
+        $resolvedBankAccountIds = $this->normalizeIntegerList($bankAccountIds, 'bank_account_ids');
+        $resolvedFinancialCategoryIds = $this->normalizeIntegerList($financialCategoryIds, 'financial_category_ids');
+        $resolvedVehicleIds = $this->normalizeIntegerList($vehicleIds, 'vehicle_ids');
+
+        return $this->tenant->runFor($company, function () use ($from, $to, $resolvedIncludeForecast, $resolvedStatuses, $resolvedBankAccountIds, $resolvedFinancialCategoryIds, $resolvedVehicleIds): array {
             $accountsQuery = BankAccount::query()->where('active', true)->orderBy('name');
 
-            if ($bankAccountIds !== null && $bankAccountIds !== []) {
-                $accountsQuery->whereIn('id', $bankAccountIds);
+            if ($resolvedBankAccountIds !== null && $resolvedBankAccountIds !== []) {
+                $accountsQuery->whereIn('id', $resolvedBankAccountIds);
             }
 
             /** @var Collection<int, BankAccount> $accounts */
@@ -70,24 +98,46 @@ final class BuildCashFlowMatrix
                 return [
                     'from' => $from->toDateString(),
                     'to' => $to->toDateString(),
-                    'include_forecast' => $includeForecast,
+                    'include_forecast' => $resolvedIncludeForecast,
+                    'applied_filters' => [
+                        'bank_account_ids' => $resolvedBankAccountIds ?? [],
+                        'financial_category_ids' => $resolvedFinancialCategoryIds ?? [],
+                        'vehicle_ids' => $resolvedVehicleIds ?? [],
+                        'statuses' => $resolvedStatuses,
+                    ],
+                    'totals' => [
+                        'opening_balance_cents' => 0,
+                        'revenue_cents' => 0,
+                        'expense_cents' => 0,
+                        'net_cents' => 0,
+                        'closing_balance_cents' => 0,
+                    ],
                     'accounts' => [],
                 ];
             }
 
             $accountIds = $accounts->pluck('id')->map(fn ($id): int => (int) $id)->all();
-            $statuses = $includeForecast
-                ? [FinancialEntryStatus::Settled->value, FinancialEntryStatus::Forecast->value]
-                : [FinancialEntryStatus::Settled->value];
+            $entriesQuery = FinancialEntry::query()
+                ->whereIn('bank_account_id', $accountIds)
+                ->whereIn('status', $resolvedStatuses);
+
+            if ($resolvedFinancialCategoryIds !== null && $resolvedFinancialCategoryIds !== []) {
+                $entriesQuery->whereIn('financial_category_id', $resolvedFinancialCategoryIds);
+            }
+
+            if ($resolvedVehicleIds !== null && $resolvedVehicleIds !== []) {
+                $entriesQuery->whereIn('vehicle_id', $resolvedVehicleIds);
+            }
 
             /** @var Collection<int, FinancialEntry> $entries */
-            $entries = FinancialEntry::query()
-                ->whereIn('bank_account_id', $accountIds)
-                ->whereIn('status', $statuses)
-                ->get(['bank_account_id', 'type', 'status', 'amount_cents', 'paid_at', 'due_date', 'competence_date']);
+            $entries = $entriesQuery->get(['bank_account_id', 'type', 'status', 'amount_cents', 'paid_at', 'due_date', 'competence_date']);
 
             $openingByAccount = [];
             $dayTotalsByAccount = [];
+            $globalOpening = 0;
+            $globalRevenue = 0;
+            $globalExpense = 0;
+            $globalClosing = 0;
 
             foreach ($entries as $entry) {
                 $bankAccountId = (int) $entry->bank_account_id;
@@ -133,6 +183,8 @@ final class BuildCashFlowMatrix
                 $bankAccountId = (int) $account->getKey();
                 $opening = (int) $account->initial_balance_cents + ($openingByAccount[$bankAccountId] ?? 0);
                 $running = $opening;
+                $accountRevenue = 0;
+                $accountExpense = 0;
                 $daysPayload = [];
 
                 foreach (CarbonPeriod::create($from, $to) as $date) {
@@ -143,6 +195,8 @@ final class BuildCashFlowMatrix
                     ];
 
                     $net = (int) $dayTotals['revenue_cents'] - (int) $dayTotals['expense_cents'];
+                    $accountRevenue += (int) $dayTotals['revenue_cents'];
+                    $accountExpense += (int) $dayTotals['expense_cents'];
                     $running += $net;
 
                     $daysPayload[] = [
@@ -154,22 +208,109 @@ final class BuildCashFlowMatrix
                     ];
                 }
 
+                $accountNet = $accountRevenue - $accountExpense;
+                $globalOpening += $opening;
+                $globalRevenue += $accountRevenue;
+                $globalExpense += $accountExpense;
+                $globalClosing += $running;
+
                 $accountsPayload[] = [
                     'bank_account_id' => $bankAccountId,
                     'name' => (string) $account->name,
                     'opening_balance_cents' => $opening,
+                    'revenue_cents' => $accountRevenue,
+                    'expense_cents' => $accountExpense,
+                    'net_cents' => $accountNet,
                     'closing_balance_cents' => $running,
                     'days' => $daysPayload,
                 ];
             }
 
+            $globalNet = $globalRevenue - $globalExpense;
+
             return [
                 'from' => $from->toDateString(),
                 'to' => $to->toDateString(),
-                'include_forecast' => $includeForecast,
+                'include_forecast' => $resolvedIncludeForecast,
+                'applied_filters' => [
+                    'bank_account_ids' => $resolvedBankAccountIds ?? [],
+                    'financial_category_ids' => $resolvedFinancialCategoryIds ?? [],
+                    'vehicle_ids' => $resolvedVehicleIds ?? [],
+                    'statuses' => $resolvedStatuses,
+                ],
+                'totals' => [
+                    'opening_balance_cents' => $globalOpening,
+                    'revenue_cents' => $globalRevenue,
+                    'expense_cents' => $globalExpense,
+                    'net_cents' => $globalNet,
+                    'closing_balance_cents' => $globalClosing,
+                ],
                 'accounts' => $accountsPayload,
             ];
         });
+    }
+
+    /**
+     * @param  list<int>|null  $values
+     * @return list<int>|null
+     */
+    private function normalizeIntegerList(?array $values, string $field): ?array
+    {
+        if ($values === null) {
+            return null;
+        }
+
+        if ($values === []) {
+            return [];
+        }
+
+        $normalized = [];
+
+        foreach ($values as $value) {
+            if (! is_int($value)) {
+                throw ValidationException::withMessages([
+                    $field => 'Filtro invalido. Use apenas identificadores inteiros.',
+                ]);
+            }
+
+            if ($value < 1) {
+                throw ValidationException::withMessages([
+                    $field => 'Filtro invalido. Identificadores devem ser maiores que zero.',
+                ]);
+            }
+
+            $normalized[] = $value;
+        }
+
+        return array_values(array_unique($normalized));
+    }
+
+    /**
+     * @param  list<string>|null  $statuses
+     * @return list<string>
+     */
+    private function resolveStatuses(bool $includeForecast, ?array $statuses): array
+    {
+        if ($statuses === null || $statuses === []) {
+            return $includeForecast
+                ? [FinancialEntryStatus::Settled->value, FinancialEntryStatus::Forecast->value]
+                : [FinancialEntryStatus::Settled->value];
+        }
+
+        $allowedStatuses = [FinancialEntryStatus::Settled->value, FinancialEntryStatus::Forecast->value];
+        $resolvedStatuses = [];
+
+        foreach ($statuses as $status) {
+            if (! is_string($status) || ! in_array($status, $allowedStatuses, true)) {
+                throw ValidationException::withMessages([
+                    'statuses' => 'Status invalido para o fluxo de caixa. Use settled e/ou forecast.',
+                ]);
+            }
+
+            $resolvedStatuses[] = $status;
+        }
+
+        return array_values(array_unique($resolvedStatuses));
     }
 
     private function resolveCashDate(FinancialEntry $entry): ?CarbonImmutable
