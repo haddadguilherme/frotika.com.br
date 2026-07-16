@@ -5,7 +5,8 @@
 @section('content')
     <section class="grid gap-6 lg:grid-cols-[1.3fr_1fr] lg:items-start">
         <div>
-            <p class="inline-flex items-center rounded-full bg-accent-500/20 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-brand-950">
+            <p
+                class="inline-flex items-center rounded-full bg-accent-500/20 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-brand-950">
                 Sistema para micro transportadoras
             </p>
 

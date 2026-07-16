@@ -5,7 +5,8 @@
 @section('content')
     <div class="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[1fr_1.4fr]">
         <section>
-            <p class="inline-flex items-center rounded-full bg-accent-500/20 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-brand-950">
+            <p
+                class="inline-flex items-center rounded-full bg-accent-500/20 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-brand-950">
                 Onboarding inicial
             </p>
             <h1 class="mt-4 font-display text-3xl font-semibold text-white sm:text-4xl">Comece seu DRE Veicular</h1>
@@ -28,18 +29,22 @@
                 @csrf
 
                 <div class="sm:col-span-2">
-                    <x-ui.input label="Nome" name="name" placeholder="Nome do responsavel" autocomplete="name" required />
+                    <x-ui.input label="Nome" name="name" placeholder="Nome do responsavel" autocomplete="name"
+                        required />
                 </div>
 
-                <x-ui.input label="E-mail" name="email" type="email" placeholder="voce@empresa.com.br" autocomplete="email" required />
+                <x-ui.input label="E-mail" name="email" type="email" placeholder="voce@empresa.com.br"
+                    autocomplete="email" required />
 
-                <x-ui.input label="Senha" name="password" type="password" placeholder="No minimo 8 caracteres" autocomplete="new-password" required />
+                <x-ui.input label="Senha" name="password" type="password" placeholder="No minimo 8 caracteres"
+                    autocomplete="new-password" required />
 
                 <div class="sm:col-span-2">
                     <x-ui.input label="Nome do grupo" name="group_name" placeholder="Grupo da transportadora" required />
                 </div>
 
-                <x-ui.input label="Razao social" name="company_legal_name" placeholder="Empresa de Transportes LTDA" required />
+                <x-ui.input label="Razao social" name="company_legal_name" placeholder="Empresa de Transportes LTDA"
+                    required />
 
                 <x-ui.input label="Nome fantasia" name="company_trade_name" placeholder="Transportes Exemplo" required />
 
@@ -47,7 +52,8 @@
 
                 <div>
                     <label for="tax_regime" class="text-sm font-medium text-slate-700">Regime tributario</label>
-                    <select id="tax_regime" name="tax_regime" class="mt-2 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20">
+                    <select id="tax_regime" name="tax_regime"
+                        class="mt-2 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20">
                         <option value="simples" @selected(old('tax_regime', 'simples') === 'simples')>Simples Nacional</option>
                         <option value="presumido" @selected(old('tax_regime') === 'presumido')>Lucro Presumido</option>
                         <option value="real" @selected(old('tax_regime') === 'real')>Lucro Real</option>
