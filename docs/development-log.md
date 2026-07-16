@@ -108,3 +108,25 @@
 - `vendor/bin/phpunit tests/Feature/Tenancy/RegisterOwnerAndCompanyActionTest.php`
 - `vendor/bin/pint --dirty`
 - `composer test`
+
+## 2026-07-15 - Etapa 0.5 (LP + auth + layout base)
+
+### Entregas da etapa 0.5
+
+- Definido tema inicial no Tailwind v4 em `resources/css/app.css` com tokens de marca, semantica e fontes (`brand`, `accent`, `success`, `warning`, `danger`, `info`, `font-display`, `font-sans`, `font-mono`).
+- Atualizado `vite.config.js` para carregar as familias `Archivo`, `Inter` e `JetBrains Mono`, alinhando com o blueprint visual.
+- Criados componentes UI base em `resources/views/components/ui`: `button`, `link-button`, `input` e `card`.
+- Criado layout publico reutilizavel `resources/views/layouts/guest.blade.php` com cabecalho, area de feedback e estrutura para paginas de entrada.
+- Substituida a `welcome` padrao por LP inicial em `resources/views/welcome.blade.php`, com proposta de valor, CTA e blocos de beneficios.
+- Criadas telas de autenticacao `resources/views/auth/login.blade.php` e `resources/views/auth/register.blade.php` usando os componentes UI.
+- Criado layout autenticado base `resources/views/layouts/app.blade.php` com sidebar e topbar para evolucao das telas internas.
+- Criada pagina inicial autenticada `resources/views/dashboard.blade.php` para servir de base das proximas telas.
+- Rotas atualizadas em `routes/web.php` com URLs em pt-BR: `/entrar`, `/registrar`, `/painel` e `/sair`.
+- Criados controllers de auth (`ShowLoginController`, `LoginController`, `LogoutController`) e request `LoginRequest`.
+- Endpoint de onboarding `POST /registrar` mantido compativel com JSON e agora tambem com fluxo HTML (login automatico + redirect para o painel).
+- Layouts `guest` e `app` passaram a ter fallback de assets para ambiente sem `manifest.json`, evitando erro em testes sem build de frontend.
+
+### Validacoes da etapa 0.5
+
+- `vendor/bin/pint --dirty`
+- `composer test`

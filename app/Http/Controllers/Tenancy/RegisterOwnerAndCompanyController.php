@@ -8,10 +8,12 @@ use App\Domain\Tenancy\Actions\RegisterOwnerAndCompany;
 use App\Domain\Tenancy\Data\RegisterOwnerAndCompanyData;
 use App\Http\Requests\Tenancy\RegisterOwnerAndCompanyRequest;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Auth;
 
 final class RegisterOwnerAndCompanyController
 {
-    public function __invoke(RegisterOwnerAndCompanyRequest $request, RegisterOwnerAndCompany $action): JsonResponse
+    public function __invoke(RegisterOwnerAndCompanyRequest $request, RegisterOwnerAndCompany $action): JsonResponse|RedirectResponse
     {
         $validated = $request->validated();
 
@@ -25,6 +27,15 @@ final class RegisterOwnerAndCompanyController
             companyCnpj: $validated['company_cnpj'],
             taxRegime: $validated['tax_regime'] ?? 'simples',
         ));
+
+        if (! $request->expectsJson()) {
+            Auth::login($result->user);
+            $request->session()->regenerate();
+
+            return redirect()
+                ->route('dashboard')
+                ->with('status', 'Conta criada com sucesso.');
+        }
 
         return response()->json([
             'user_id' => $result->user->getKey(),
