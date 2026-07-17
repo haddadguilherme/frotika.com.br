@@ -37,4 +37,4 @@ Factory não define `company_id` — a trait resolve pelo contexto. Teste que cr
 
 - Nome do teste em português, descrevendo o comportamento: `public function test_consumo_ignora_abastecimento_de_arla(): void`.
 - Um comportamento por teste.
-- Sem mock de Eloquent. Use banco de teste real (SQLite em memória não serve: o projeto usa recursos do Postgres).
+- Sem mock de Eloquent. Use banco de teste real (SQLite em memória não serve: o projeto usa recursos do MySQL 8, como `json`, colunas geradas, CTE recursiva e window functions).

@@ -15,7 +15,7 @@ return new class extends Migration
             $table->boolean('is_platform_admin')->default(false)->after('remember_token');
             $table->foreignId('current_group_id')->nullable()->after('is_platform_admin')->constrained('groups')->nullOnDelete();
             $table->foreignId('current_company_id')->nullable()->after('current_group_id')->constrained('companies')->nullOnDelete();
-            $table->jsonb('preferences')->nullable()->after('current_company_id');
+            $table->json('preferences')->nullable()->after('current_company_id');
             $table->timestamp('last_login_at')->nullable()->after('preferences');
         });
     }

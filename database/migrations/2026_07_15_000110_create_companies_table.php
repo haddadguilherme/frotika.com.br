@@ -31,7 +31,7 @@ return new class extends Migration
             $table->string('phone', 20)->nullable();
             $table->string('email', 150)->nullable();
             $table->string('logo_path')->nullable();
-            $table->jsonb('settings')->nullable();
+            $table->json('settings')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });

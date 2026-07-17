@@ -2,7 +2,7 @@
 
 > **Documento mestre para o agente de desenvolvimento.**
 > Sistema de gestão para micro transportadoras — `frotika.com.br`
-> Stack: Laravel 13.8 · PHP 8.3 · Tailwind CSS v4 · Livewire · PostgreSQL
+> Stack: Laravel 13.8 · PHP 8.3 · Tailwind CSS v4 · Livewire · MySQL 8
 > Versão do documento: 1.0 · Julho/2026
 
 ---
@@ -78,9 +78,17 @@ Livewire + Alpine + Blade, sem SPA. Motivo: equipe pequena, um único desenvolve
 
 Um banco, `group_id` e `company_id` nas tabelas, global scopes no Eloquent. Motivo: dezenas/centenas de tenants pequenos; banco por tenant multiplicaria custo de migração e infra sem necessidade. Ver [seção 3](#3-modelo-de-tenancy).
 
-### ADR-003 — PostgreSQL 16
+### ADR-003 — MySQL 8
 
-Motivo: precisão decimal confiável, `jsonb` com índice, CTEs recursivas para o plano de contas hierárquico, window functions para o DRE. MySQL funcionaria, mas o relatório é o coração do produto e o Postgres facilita.
+Motivo: infraestrutura padrão do ambiente de hospedagem e familiaridade da equipe. O MySQL 8 cobre o que o produto precisa: tipo `JSON` nativo, CTEs recursivas para o plano de contas hierárquico e window functions para o DRE. Requisitos monetários continuam atendidos por `bigInteger` em centavos (ADR-004) — sem dependência de tipo decimal do banco.
+
+**Restrições em relação ao Postgres, tratadas explicitamente:**
+
+- **Índice único parcial não existe no MySQL.** Regras como "uma única conta `is_default = true` por empresa" não usam `CREATE UNIQUE INDEX ... WHERE`. Alternativas, nesta ordem de preferência: (a) coluna gerada que vira `NULL` quando `is_default = false` + índice único sobre `(company_id, coluna_gerada)`; (b) garantir a unicidade na Action, dentro de transação.
+- **`JSON` (não `jsonb`).** MySQL 8 armazena JSON em formato binário próprio e indexa via colunas geradas + índice funcional quando necessário.
+- **Charset/collation:** `utf8mb4` / `utf8mb4_0900_ai_ci` como padrão do banco.
+
+> Migração de banco (ex.: voltar ao Postgres) exige novo ADR. Este substitui a decisão original de PostgreSQL 16.
 
 ### ADR-004 — Valores monetários em centavos (`bigInteger`)
 
@@ -289,7 +297,7 @@ Fluxo obrigatório: `owner` atual seleciona outro `admin` → confirmação por 
 | `type` | enum | `customer` \| `platform` |
 | `owner_user_id` | FK users | responsável pela cobrança |
 | `status` | enum | `active` \| `suspended` \| `canceled` |
-| `settings` | jsonb | preferências do grupo |
+| `settings` | json | preferências do grupo |
 | `deleted_at` | timestamp | |
 
 **`companies`**
@@ -307,7 +315,7 @@ Fluxo obrigatório: `owner` atual seleciona outro `admin` → confirmação por 
 | `zip_code`,`street`,`number`,`complement`,`district`,`city`,`state`,`ibge_code` | | endereço |
 | `phone`, `email` | | |
 | `logo_path` | string, null | |
-| `settings` | jsonb | ex.: critério de rateio, moeda |
+| `settings` | json | ex.: critério de rateio, moeda |
 | `deleted_at` | timestamp | |
 
 **`users`** — além do padrão Laravel:
@@ -318,14 +326,14 @@ Fluxo obrigatório: `owner` atual seleciona outro `admin` → confirmação por 
 | `is_platform_admin` | boolean, default false | |
 | `current_group_id` | FK groups, null | |
 | `current_company_id` | FK companies, null | |
-| `preferences` | jsonb | sidebar colapsada, atalhos fixados, tema |
+| `preferences` | json | sidebar colapsada, atalhos fixados, tema |
 | `last_login_at` | timestamp, null | |
 
 **`group_user`** — `group_id`, `user_id`, `role`, `invited_by`, `joined_at`. Unique(`group_id`,`user_id`).
 
 **`company_user`** — `company_id`, `user_id`. Unique(`company_id`,`user_id`).
 
-**`invitations`** — `group_id`, `email`, `role`, `company_ids` (jsonb), `token`, `expires_at`, `accepted_at`, `invited_by`.
+**`invitations`** — `group_id`, `email`, `role`, `company_ids` (json), `token`, `expires_at`, `accepted_at`, `invited_by`.
 
 ### 5.2 Cadastros
 
@@ -409,7 +417,7 @@ Fluxo obrigatório: `owner` atual seleciona outro `admin` → confirmação por 
 | `protocol_number` | string(20), null | |
 | `xml_path` | string | caminho no disco/objeto |
 | `xml_hash` | char(64) | sha256 do conteúdo |
-| `raw` | jsonb | payload parseado completo (rede de segurança) |
+| `raw` | json | payload parseado completo (rede de segurança) |
 | `imported_by` | FK users, null | |
 | `imported_at` | timestamptz | |
 
@@ -487,8 +495,14 @@ Se odometer atual <= odometer anterior → erro de validação, bloquear.
 
 `company_id`, `name`, `type` (enum `cash`, `checking`, `savings`, `investment`, `credit_card`), `bank_code` (null), `agency` (null), `number` (null), `initial_balance_cents`, `initial_balance_at` (date), `current_balance_cents` (denormalizado), `is_default` (bool), `active` (bool), `notes`.
 
-> Somente **uma** conta `is_default = true` por empresa. Índice único parcial no Postgres:
-> `CREATE UNIQUE INDEX ON bank_accounts (company_id) WHERE is_default AND deleted_at IS NULL;`
+> Somente **uma** conta `is_default = true` por empresa. MySQL não tem índice único parcial; use coluna gerada que só recebe valor quando a conta é padrão e ainda está ativa, com índice único sobre ela:
+> ```sql
+> ALTER TABLE bank_accounts
+>   ADD COLUMN default_flag TINYINT
+>     GENERATED ALWAYS AS (CASE WHEN is_default = 1 AND deleted_at IS NULL THEN 1 ELSE NULL END) VIRTUAL,
+>   ADD UNIQUE KEY uq_bank_accounts_default (company_id, default_flag);
+> ```
+> Reforce também a unicidade na Action, dentro de transação.
 
 **`financial_categories`** — plano de contas hierárquico.
 
@@ -596,13 +610,13 @@ Cada empresa nasce com uma **cópia** dessas categorias (`company_id` preenchido
 
 ### 5.7 SaaS
 
-**`plans`** — `name`, `slug`, `price_cents`, `billing_period` (enum `monthly`, `yearly`), `limits` (jsonb: `max_vehicles`, `max_users`, `max_companies`), `features` (jsonb), `trial_days`, `active`, `sort_order`.
+**`plans`** — `name`, `slug`, `price_cents`, `billing_period` (enum `monthly`, `yearly`), `limits` (json: `max_vehicles`, `max_users`, `max_companies`), `features` (json), `trial_days`, `active`, `sort_order`.
 
 **`subscriptions`** — `group_id`, `plan_id`, `status` (enum `trialing`, `active`, `past_due`, `canceled`, `expired`), `started_at`, `trial_ends_at`, `current_period_start`, `current_period_end`, `canceled_at`, `cancel_reason`, `gateway`, `gateway_customer_id`, `gateway_subscription_id`, `price_cents` (preço travado na contratação).
 
 **`invoices`** — `group_id`, `subscription_id`, `number`, `amount_cents`, `due_date`, `paid_at`, `status` (enum `pending`, `paid`, `overdue`, `canceled`, `refunded`), `gateway_invoice_id`, `payment_method`, `pix_payload` (text, null), `boleto_url`, `pdf_url`, `attempts`, `last_attempt_at`.
 
-**`gateway_webhook_events`** — `gateway`, `event_id` (unique), `event_type`, `payload` (jsonb), `processed_at`, `error`. Idempotência de webhook.
+**`gateway_webhook_events`** — `gateway`, `event_id` (unique), `event_type`, `payload` (json), `processed_at`, `error`. Idempotência de webhook.
 
 ### 5.8 Suporte
 
@@ -1021,7 +1035,7 @@ Toda linha do DRE é clicável e abre um painel lateral com os lançamentos que 
 | Frota | até 30 | ilimitado | 5 |
 | Sob medida | negociado | | |
 
-Trial de 14 dias, sem cartão. `limits` em `plans.limits` (jsonb), verificados por `App\Domain\Billing\PlanLimiter`:
+Trial de 14 dias, sem cartão. `limits` em `plans.limits` (json), verificados por `App\Domain\Billing\PlanLimiter`:
 
 ```php
 $limiter->ensureCan('vehicle.create', $group);  // lança PlanLimitExceededException
@@ -1534,7 +1548,7 @@ Cada fase é entregável e testável. Não iniciar a próxima com a anterior ver
 
 ### Fase 0 — Fundação
 
-- [ ] Projeto Laravel 13.8, PostgreSQL, dependências da [seção 2.1](#21-dependências)
+- [ ] Projeto Laravel 13.8, MySQL 8, dependências da [seção 2.1](#21-dependências)
 - [ ] `laravel/boost` instalado e configurado
 - [ ] Tailwind v4 com os tokens da [seção 12.4](#124-tokens-tailwind-v4)
 - [ ] Fontes (Archivo, Inter, JetBrains Mono) auto-hospedadas

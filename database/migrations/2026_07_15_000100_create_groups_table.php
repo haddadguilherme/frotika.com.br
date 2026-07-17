@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('type', 20)->default('customer');
             $table->foreignId('owner_user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->string('status', 20)->default('active');
-            $table->jsonb('settings')->nullable();
+            $table->json('settings')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });

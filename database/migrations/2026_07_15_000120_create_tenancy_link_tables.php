@@ -36,7 +36,7 @@ return new class extends Migration
             $table->foreignId('group_id')->constrained()->cascadeOnDelete();
             $table->string('email');
             $table->string('role', 20);
-            $table->jsonb('company_ids')->nullable();
+            $table->json('company_ids')->nullable();
             $table->string('token')->unique();
             $table->timestamp('expires_at');
             $table->timestamp('accepted_at')->nullable();

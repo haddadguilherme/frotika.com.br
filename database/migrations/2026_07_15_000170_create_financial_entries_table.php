@@ -31,7 +31,7 @@ return new class extends Migration
             $table->foreignId('transfer_pair_id')->nullable()->constrained('financial_entries')->nullOnDelete();
             $table->unsignedBigInteger('recurrence_id')->nullable();
             $table->string('attachment_path')->nullable();
-            $table->timestampTz('reconciled_at')->nullable();
+            $table->timestamp('reconciled_at')->nullable();
             $table->foreignId('created_by')->constrained('users')->restrictOnDelete();
             $table->timestamps();
             $table->softDeletes();

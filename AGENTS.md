@@ -6,7 +6,7 @@ Especificação completa: [docs/frotika-blueprint.md](docs/frotika-blueprint.md)
 
 ## Stack
 
-Laravel 13.8 · PHP 8.3 · PostgreSQL 16 · Livewire · Tailwind CSS v4 · PHPUnit 12.
+Laravel 13.8 · PHP 8.3 · MySQL 8 · Livewire · Tailwind CSS v4 · PHPUnit 12.
 Sem Inertia, sem React, sem Vue. Sem Pest — o projeto usa PHPUnit.
 
 ## Comandos

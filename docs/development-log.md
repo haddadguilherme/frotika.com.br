@@ -33,7 +33,7 @@
 
 - Conectar `TenantContext` ao middleware de request (`SetTenantContext`).
 - Introduzir migrations oficiais de tenancy seguindo as convencoes do blueprint.
-- Passar os testes de tenancy para schema real (PostgreSQL) quando a base de dominio estiver pronta.
+- Passar os testes de tenancy para schema real (MySQL 8) quando a base de dominio estiver pronta.
 
 ## 2026-07-15 - Etapa 0.3 (middleware + schema inicial de tenancy)
 

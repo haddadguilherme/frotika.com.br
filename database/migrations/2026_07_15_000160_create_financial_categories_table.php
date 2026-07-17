@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -27,12 +26,18 @@ return new class extends Migration
             $table->timestamps();
             $table->softDeletes();
 
+            // MySQL não tem índice único parcial: coluna gerada espelha `code`
+            // apenas em linhas não excluídas; assim a unicidade (company_id, code)
+            // vale só para registros ativos, liberando reuso após soft delete.
+            $table->string('code_active', 20)
+                ->virtualAs('case when deleted_at is null then code else null end')
+                ->nullable();
+
             $table->index(['company_id', 'active']);
             $table->index(['company_id', 'type']);
             $table->index(['company_id', 'dre_group']);
+            $table->unique(['company_id', 'code_active'], 'financial_categories_company_code_unique');
         });
-
-        DB::statement('CREATE UNIQUE INDEX financial_categories_company_code_unique ON financial_categories (company_id, code) WHERE deleted_at IS NULL');
     }
 
     public function down(): void

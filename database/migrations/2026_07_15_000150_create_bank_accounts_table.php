@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -28,10 +27,16 @@ return new class extends Migration
             $table->timestamps();
             $table->softDeletes();
 
-            $table->index(['company_id', 'active']);
-        });
+            // MySQL não tem índice único parcial: coluna gerada só recebe valor
+            // quando a conta é padrão e ativa; NULLs não colidem no índice único,
+            // garantindo no máximo uma conta padrão por empresa.
+            $table->unsignedTinyInteger('default_flag')
+                ->virtualAs('case when is_default = 1 and deleted_at is null then 1 else null end')
+                ->nullable();
 
-        DB::statement('CREATE UNIQUE INDEX bank_accounts_default_unique ON bank_accounts (company_id) WHERE is_default = true AND deleted_at IS NULL');
+            $table->index(['company_id', 'active']);
+            $table->unique(['company_id', 'default_flag'], 'bank_accounts_default_unique');
+        });
     }
 
     public function down(): void
