@@ -536,3 +536,29 @@ Fase 4. Modulo de manutencoes fechando o lado de custos do DRE, com despesa sinc
 - `vendor/bin/phpstan analyse --memory-limit=1G` (0 erros, nivel 6)
 - `composer test` (185 testes)
 - `npm run build`
+
+## 2026-07-18 - Etapa 0.26 (cadastro simples de motoristas)
+
+Cadastro enxuto de motoristas (Fleet), conforme pedido: nome, CPF, CNH (numero, categoria e vencimento para alertas). Tabela `drivers` reduzida ao essencial, com colunas nulaveis prontas para crescer ate a especificacao completa do blueprint 5.2 sem migration destrutiva.
+
+### Entregas da etapa 0.26
+
+- **Suporte `App\Support\Cpf\Cpf`** (digits/format/isValid com os dois digitos verificadores) — espelha o utilitario de CNPJ; fonte unica do checksum. Teste unitario `CpfTest`.
+- **Enums** `CnhCategory` (A..E, AB, AC, AD, AE com rotulo descritivo) e `DriverStatus` (ativo/inativo).
+- **Migration + model `Driver`** (`BelongsToCompany`, soft delete): `name`, `cpf`, `cnh_number`, `cnh_category`, `cnh_expires_at`, `status`, `notes`, `user_id` nulavel (forward-compat). Metodos `cnhDaysToExpire()` e `cnhAlert()` (`expired`/`expiring`/null) com janela de 30 dias. Indices (`company_id`,`status`) e (`company_id`,`cnh_expires_at`).
+- **Actions** `CreateDriver`/`UpdateDriver`/`DeactivateDriver` (+ `DriverData` DTO e `DriverPolicy` owner/admin): CPF unico por empresa checado em nivel de aplicacao (como a placa do veiculo).
+- **HTTP + telas** (`/motoristas`): requests `Store`/`Update` (CPF normalizado para digitos e validado por checksum; `size:11`), controllers single-action (list com busca por nome/CPF, filtro de situacao e filtro "so CNH a vencer"; create/store/show/edit/update/destroy), views `index`/`_form`/`create`/`edit`/`show`. Mascara de CPF no input (JS) e badge de alerta de CNH na listagem e no detalhe. Nav "Motoristas" ligada em Frota.
+- **Teste `DriverManagementTest`**: cadastro com CNH; CPF invalido bloqueado; CPF duplicado por empresa bloqueado; alerta de CNH vencida/a vencer; atualizacao; isolamento por grupo.
+
+### Decisoes da etapa 0.26
+
+- **Escopo enxuto** (pedido do usuario): so os campos essenciais + alerta de CNH. A tabela do blueprint 5.2 (MOPP, toxicologico, remuneracao, endereco, vinculo com veiculo) fica para quando o modulo de folha/DRE precisar — colunas adicionadas depois, sem quebrar o cadastro atual.
+- **Alerta de CNH visual agora, job diario depois**: a listagem e o detalhe ja destacam CNH vencida/a vencer; a notificacao no sino + e-mail (blueprint 5.2) entra junto com a infra de notificacoes.
+- **CPF unico em nivel de aplicacao** (nao indice DB unico) para conviver com soft delete e re-cadastro, seguindo o padrao da placa de veiculo.
+
+### Validacoes da etapa 0.26
+
+- `vendor/bin/pint`
+- `vendor/bin/phpstan analyse --memory-limit=1G` (0 erros, nivel 6)
+- `composer test` (194 testes)
+- `npm run build`

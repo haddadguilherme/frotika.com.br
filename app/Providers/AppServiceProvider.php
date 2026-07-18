@@ -12,7 +12,9 @@ use App\Domain\Finance\Models\BankAccount;
 use App\Domain\Finance\Models\FinancialEntry;
 use App\Domain\Finance\Policies\BankAccountPolicy;
 use App\Domain\Finance\Policies\FinancialEntryPolicy;
+use App\Domain\Fleet\Models\Driver;
 use App\Domain\Fleet\Models\Vehicle;
+use App\Domain\Fleet\Policies\DriverPolicy;
 use App\Domain\Fleet\Policies\VehiclePolicy;
 use App\Domain\Fuelings\Models\Fueling;
 use App\Domain\Fuelings\Observers\FuelingObserver;
@@ -64,6 +66,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Company::class, CompanyPolicy::class);
         Gate::policy(BusinessPartner::class, BusinessPartnerPolicy::class);
         Gate::policy(Vehicle::class, VehiclePolicy::class);
+        Gate::policy(Driver::class, DriverPolicy::class);
         Gate::policy(Fueling::class, FuelingPolicy::class);
         Gate::policy(Maintenance::class, MaintenancePolicy::class);
         Gate::policy(BankAccount::class, BankAccountPolicy::class);

@@ -27,12 +27,19 @@ use App\Http\Controllers\Finance\StoreBankAccountController;
 use App\Http\Controllers\Finance\StoreFinancialEntryController;
 use App\Http\Controllers\Finance\UpdateBankAccountController;
 use App\Http\Controllers\Finance\UpdateFinancialEntryController;
+use App\Http\Controllers\Fleet\DeactivateDriverController;
 use App\Http\Controllers\Fleet\DeactivateVehicleController;
+use App\Http\Controllers\Fleet\ListDriversController;
 use App\Http\Controllers\Fleet\ListVehiclesController;
+use App\Http\Controllers\Fleet\ShowCreateDriverController;
 use App\Http\Controllers\Fleet\ShowCreateVehicleController;
+use App\Http\Controllers\Fleet\ShowDriverController;
+use App\Http\Controllers\Fleet\ShowEditDriverController;
 use App\Http\Controllers\Fleet\ShowEditVehicleController;
 use App\Http\Controllers\Fleet\ShowVehicleController;
+use App\Http\Controllers\Fleet\StoreDriverController;
 use App\Http\Controllers\Fleet\StoreVehicleController;
+use App\Http\Controllers\Fleet\UpdateDriverController;
 use App\Http\Controllers\Fleet\UpdateVehicleController;
 use App\Http\Controllers\Fuelings\DeleteFuelingController;
 use App\Http\Controllers\Fuelings\ListFuelingsController;
@@ -199,6 +206,22 @@ Route::middleware('auth')->group(function (): void {
         Route::delete('/veiculos/{vehicle}', DeactivateVehicleController::class)
             ->whereNumber('vehicle')
             ->name('vehicles.destroy');
+
+        Route::get('/motoristas', ListDriversController::class)->name('drivers.index');
+        Route::get('/motoristas/novo', ShowCreateDriverController::class)->name('drivers.create');
+        Route::post('/motoristas', StoreDriverController::class)->name('drivers.store');
+        Route::get('/motoristas/{driver}', ShowDriverController::class)
+            ->whereNumber('driver')
+            ->name('drivers.show');
+        Route::get('/motoristas/{driver}/editar', ShowEditDriverController::class)
+            ->whereNumber('driver')
+            ->name('drivers.edit');
+        Route::put('/motoristas/{driver}', UpdateDriverController::class)
+            ->whereNumber('driver')
+            ->name('drivers.update');
+        Route::delete('/motoristas/{driver}', DeactivateDriverController::class)
+            ->whereNumber('driver')
+            ->name('drivers.destroy');
 
         Route::get('/abastecimentos', ListFuelingsController::class)->name('fuelings.index');
         Route::get('/abastecimentos/novo', ShowCreateFuelingController::class)->name('fuelings.create');

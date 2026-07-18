@@ -38,7 +38,7 @@
             ],
             'Frota' => [
                 ['label' => 'Veículos', 'route' => 'vehicles.index', 'active' => 'vehicles.*'],
-                ['label' => 'Motoristas', 'route' => null],
+                ['label' => 'Motoristas', 'route' => 'drivers.index', 'active' => 'drivers.*'],
             ],
             'Financeiro' => [
                 ['label' => 'Lançamentos', 'route' => 'financial-entries.index', 'active' => 'financial-entries.*'],
