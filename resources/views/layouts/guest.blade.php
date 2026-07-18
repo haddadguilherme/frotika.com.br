@@ -12,7 +12,7 @@
     @endif
 </head>
 
-<body class="min-h-screen bg-slate-100 font-sans text-slate-900 antialiased">
+<body class="flex min-h-screen flex-col bg-slate-100 font-sans text-slate-900 antialiased">
     <header class="bg-brand-950 border-b border-brand-800/70">
         <div class="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
             <a href="{{ route('welcome') }}" class="inline-flex">
@@ -37,7 +37,7 @@
         </div>
     </header>
 
-    <main class="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+    <main class="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
         @if (session('status'))
             <x-ui.card class="mb-6 border-success-500/40 bg-success-50 p-4">
                 <p class="text-sm font-medium text-success-700">{{ session('status') }}</p>
