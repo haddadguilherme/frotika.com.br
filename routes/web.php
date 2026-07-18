@@ -12,6 +12,34 @@ use App\Http\Controllers\Auth\ShowLoginController;
 use App\Http\Controllers\Auth\ShowResetPasswordController;
 use App\Http\Controllers\Auth\ShowVerifyEmailController;
 use App\Http\Controllers\Auth\VerifyEmailController;
+use App\Http\Controllers\Finance\CancelFinancialEntryController;
+use App\Http\Controllers\Finance\DeactivateBankAccountController;
+use App\Http\Controllers\Finance\ListBankAccountsController;
+use App\Http\Controllers\Finance\ListFinancialEntriesController;
+use App\Http\Controllers\Finance\SettleFinancialEntryController;
+use App\Http\Controllers\Finance\ShowCreateBankAccountController;
+use App\Http\Controllers\Finance\ShowCreateFinancialEntryController;
+use App\Http\Controllers\Finance\ShowEditBankAccountController;
+use App\Http\Controllers\Finance\ShowEditFinancialEntryController;
+use App\Http\Controllers\Finance\ShowFinancialEntryController;
+use App\Http\Controllers\Finance\StoreBankAccountController;
+use App\Http\Controllers\Finance\StoreFinancialEntryController;
+use App\Http\Controllers\Finance\UpdateBankAccountController;
+use App\Http\Controllers\Finance\UpdateFinancialEntryController;
+use App\Http\Controllers\Fleet\DeactivateVehicleController;
+use App\Http\Controllers\Fleet\ListVehiclesController;
+use App\Http\Controllers\Fleet\ShowCreateVehicleController;
+use App\Http\Controllers\Fleet\ShowEditVehicleController;
+use App\Http\Controllers\Fleet\ShowVehicleController;
+use App\Http\Controllers\Fleet\StoreVehicleController;
+use App\Http\Controllers\Fleet\UpdateVehicleController;
+use App\Http\Controllers\Partners\DeactivateBusinessPartnerController;
+use App\Http\Controllers\Partners\ListBusinessPartnersController;
+use App\Http\Controllers\Partners\ShowBusinessPartnerController;
+use App\Http\Controllers\Partners\ShowCreateBusinessPartnerController;
+use App\Http\Controllers\Partners\ShowEditBusinessPartnerController;
+use App\Http\Controllers\Partners\StoreBusinessPartnerController;
+use App\Http\Controllers\Partners\UpdateBusinessPartnerController;
 use App\Http\Controllers\Tenancy\CreateCompanyController;
 use App\Http\Controllers\Tenancy\DeactivateCompanyController;
 use App\Http\Controllers\Tenancy\ListCompaniesController;
@@ -24,6 +52,10 @@ use App\Http\Controllers\Tenancy\ShowEditCompanyController;
 use App\Http\Controllers\Tenancy\ShowRegisterController;
 use App\Http\Controllers\Tenancy\SwitchCurrentCompanyController;
 use App\Http\Controllers\Tenancy\UpdateCompanyController;
+use App\Http\Controllers\Trips\ListCteController;
+use App\Http\Controllers\Trips\ShowCteController;
+use App\Http\Controllers\Trips\ShowImportCteController;
+use App\Http\Controllers\Trips\StoreCteImportController;
 use App\Http\Middleware\EnsureGroupLicenseAllowsWrite;
 use App\Http\Middleware\EnsurePlatformAdmin;
 use App\Platform\Http\Controllers\IssueGroupLicenseInvoiceController;
@@ -86,6 +118,77 @@ Route::middleware('auth')->group(function (): void {
         Route::delete('/empresas/{company}', DeactivateCompanyController::class)
             ->whereNumber('company')
             ->name('companies.destroy');
+
+        Route::get('/parceiros', ListBusinessPartnersController::class)->name('partners.index');
+        Route::get('/parceiros/novo', ShowCreateBusinessPartnerController::class)->name('partners.create');
+        Route::post('/parceiros', StoreBusinessPartnerController::class)->name('partners.store');
+        Route::get('/parceiros/{partner}', ShowBusinessPartnerController::class)
+            ->whereNumber('partner')
+            ->name('partners.show');
+        Route::get('/parceiros/{partner}/editar', ShowEditBusinessPartnerController::class)
+            ->whereNumber('partner')
+            ->name('partners.edit');
+        Route::put('/parceiros/{partner}', UpdateBusinessPartnerController::class)
+            ->whereNumber('partner')
+            ->name('partners.update');
+        Route::delete('/parceiros/{partner}', DeactivateBusinessPartnerController::class)
+            ->whereNumber('partner')
+            ->name('partners.destroy');
+
+        Route::get('/contas', ListBankAccountsController::class)->name('bank-accounts.index');
+        Route::get('/contas/nova', ShowCreateBankAccountController::class)->name('bank-accounts.create');
+        Route::post('/contas', StoreBankAccountController::class)->name('bank-accounts.store');
+        Route::get('/contas/{account}/editar', ShowEditBankAccountController::class)
+            ->whereNumber('account')
+            ->name('bank-accounts.edit');
+        Route::put('/contas/{account}', UpdateBankAccountController::class)
+            ->whereNumber('account')
+            ->name('bank-accounts.update');
+        Route::delete('/contas/{account}', DeactivateBankAccountController::class)
+            ->whereNumber('account')
+            ->name('bank-accounts.destroy');
+
+        Route::get('/lancamentos', ListFinancialEntriesController::class)->name('financial-entries.index');
+        Route::get('/lancamentos/novo', ShowCreateFinancialEntryController::class)->name('financial-entries.create');
+        Route::post('/lancamentos', StoreFinancialEntryController::class)->name('financial-entries.store');
+        Route::get('/lancamentos/{entry}', ShowFinancialEntryController::class)
+            ->whereNumber('entry')
+            ->name('financial-entries.show');
+        Route::get('/lancamentos/{entry}/editar', ShowEditFinancialEntryController::class)
+            ->whereNumber('entry')
+            ->name('financial-entries.edit');
+        Route::put('/lancamentos/{entry}', UpdateFinancialEntryController::class)
+            ->whereNumber('entry')
+            ->name('financial-entries.update');
+        Route::post('/lancamentos/{entry}/baixa', SettleFinancialEntryController::class)
+            ->whereNumber('entry')
+            ->name('financial-entries.settle');
+        Route::delete('/lancamentos/{entry}', CancelFinancialEntryController::class)
+            ->whereNumber('entry')
+            ->name('financial-entries.destroy');
+
+        Route::get('/veiculos', ListVehiclesController::class)->name('vehicles.index');
+        Route::get('/veiculos/novo', ShowCreateVehicleController::class)->name('vehicles.create');
+        Route::post('/veiculos', StoreVehicleController::class)->name('vehicles.store');
+        Route::get('/veiculos/{vehicle}', ShowVehicleController::class)
+            ->whereNumber('vehicle')
+            ->name('vehicles.show');
+        Route::get('/veiculos/{vehicle}/editar', ShowEditVehicleController::class)
+            ->whereNumber('vehicle')
+            ->name('vehicles.edit');
+        Route::put('/veiculos/{vehicle}', UpdateVehicleController::class)
+            ->whereNumber('vehicle')
+            ->name('vehicles.update');
+        Route::delete('/veiculos/{vehicle}', DeactivateVehicleController::class)
+            ->whereNumber('vehicle')
+            ->name('vehicles.destroy');
+
+        Route::get('/ct-e', ListCteController::class)->name('cte.index');
+        Route::get('/ct-e/importar', ShowImportCteController::class)->name('cte.import');
+        Route::post('/ct-e/importar', StoreCteImportController::class)->name('cte.import.store');
+        Route::get('/ct-e/{cte}', ShowCteController::class)
+            ->whereNumber('cte')
+            ->name('cte.show');
     });
 
     Route::middleware(['verified', EnsurePlatformAdmin::class])

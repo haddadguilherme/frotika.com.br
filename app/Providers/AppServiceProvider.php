@@ -8,10 +8,21 @@ use App\Domain\Billing\Enums\GroupLicenseInvoiceStatus;
 use App\Domain\Billing\Enums\GroupLicenseStatus;
 use App\Domain\Billing\Models\GroupLicense;
 use App\Domain\Billing\Models\GroupLicenseInvoice;
+use App\Domain\Finance\Models\BankAccount;
+use App\Domain\Finance\Models\FinancialEntry;
+use App\Domain\Finance\Policies\BankAccountPolicy;
+use App\Domain\Finance\Policies\FinancialEntryPolicy;
+use App\Domain\Fleet\Models\Vehicle;
+use App\Domain\Fleet\Policies\VehiclePolicy;
+use App\Domain\Partners\Models\BusinessPartner;
+use App\Domain\Partners\Policies\BusinessPartnerPolicy;
 use App\Domain\Tenancy\Models\Company;
 use App\Domain\Tenancy\Models\Group;
 use App\Domain\Tenancy\Observers\CompanyObserver;
 use App\Domain\Tenancy\Policies\CompanyPolicy;
+use App\Domain\Trips\Models\CteDocument;
+use App\Domain\Trips\Observers\CteDocumentObserver;
+use App\Domain\Trips\Policies\CteDocumentPolicy;
 use App\Models\User;
 use App\Support\Format;
 use App\Support\Tenancy\TenantContext;
@@ -37,11 +48,17 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Company::observe(CompanyObserver::class);
+        CteDocument::observe(CteDocumentObserver::class);
 
         // Alias global para usar Format:: direto na Blade (seção 14.3 do blueprint).
         AliasLoader::getInstance()->alias('Format', Format::class);
 
         Gate::policy(Company::class, CompanyPolicy::class);
+        Gate::policy(BusinessPartner::class, BusinessPartnerPolicy::class);
+        Gate::policy(Vehicle::class, VehiclePolicy::class);
+        Gate::policy(BankAccount::class, BankAccountPolicy::class);
+        Gate::policy(FinancialEntry::class, FinancialEntryPolicy::class);
+        Gate::policy(CteDocument::class, CteDocumentPolicy::class);
 
         Gate::define('switch-company', static function (User $user, Company $company): bool {
             return $user->companies()->whereKey($company->getKey())->exists()

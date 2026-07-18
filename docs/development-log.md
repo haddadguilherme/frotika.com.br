@@ -346,3 +346,98 @@ Ver ADR-003.
 - `vendor/bin/phpstan analyse --memory-limit=512M` (0 erros, nivel 6)
 - `composer test` (129 testes)
 - `npm run build`
+
+## 2026-07-18 - Etapa 0.18 (importacao de CT-e + parceiros + receita do agregado)
+
+Ver ADR-004. Baseado no XML real 4.00 (`tests/Fixtures/Cte/cte-hi-transportes.xml`), blueprint secoes 5.2/5.3/6.3/7.
+
+### Entregas da etapa 0.18
+
+- **Camada de dados**: migrations `business_partners` (dedupe por `(company_id, document)`, `kind`, `default_freight_share_percent`, endereco), `vehicles` (subconjunto minimo do 5.2, `unique(company_id, plate)`, flag `provisioned`), `cte_documents` (campos do 5.3 + `vehicle_id`/`trailer_vehicle_id`, `driver_name`/`driver_cpf`, `applied_share_percent`, `xml_path`/`xml_hash`/`raw`, `unique(company_id, access_key)`) e pivo `cte_document_business_partner` com `role`.
+- **Parser namespace-agnostico** (`app/Domain/Trips/Cte`): `CteReader` (XPath por `local-name()`, normaliza encoding, `deepValue`/`xpathValue`/`obsCont`/`protocolValue`) e `CteParser` (chave por `chCTe`/`Id`, dinheiro em centavos sem float, ICMS variavel, tomador `toma3/toma4`, placas/motorista de `ObsCont`, status pelo `cStat`). Enums `CteType/CteServiceType/CteStatus/CteTakerRole/CtePartyRole` e DTOs `CteData`/`CtePartyData`.
+- **Parceiros** (`app/Domain/Partners`): model `BusinessPartner`, enums `BusinessPartnerKind`/`BusinessPartnerDocumentType`, `UpsertBusinessPartner` (dedupe + enriquecimento sem sobrescrever), CRUD (`CreateBusinessPartner`/`UpdateBusinessPartner`/`DeactivateBusinessPartner`), `BusinessPartnerPolicy`, requests, controllers single-action e views (index/create/edit/show) em `frotika-ui`.
+- **Frota** (`app/Domain/Fleet`): model `Vehicle`, enums `VehicleType`/`VehicleStatus` e `ProvisionVehicleByPlate` (find-or-create por placa, cavalo/carreta, stub `provisioned`).
+- **ImportCte** (`app/Domain/Trips/Actions`): sem bloqueio por emitente; cadastra parceiros (emitente = `contractor`), resolve o percentual do frete (contratante -> config, 100% quando `emit == empresa`), provisiona veiculos, grava o XML privado por grupo (`grupos/{uuid}/cte/YYYY/MM/chave.xml` + sha256 + raw) e faz `updateOrCreate` do documento (idempotente).
+- **Receita no fluxo** (`EntrySynchronizer` + `CteDocumentObserver`): lancamento `revenue`/`forecast` na categoria `1.1`, `amount = round(vTPrest * applied_share_percent / 100)`, `competence_date = dhEmi`, `due_date = dhEmi + cte.receivable_days`, `vehicle_id` do CT-e; cancelamento/soft delete cancela o lancamento. Superficie unica: o relatorio agrega so `financial_entries` (regra 7).
+- **Rotas/nav**: `/ct-e` (lista), `/ct-e/importar` (upload + resultado), `/ct-e/{cte}` (detalhe com partes, veiculo, valores e lancamento); CRUD `/parceiros`. Nav e botao "Importar CT-e" do header ligados. `config/cte.php` (`receivable_days`, `default_freight_share_percent`, `storage_disk`).
+
+### Validacoes da etapa 0.18
+
+- `vendor/bin/pint`
+- `vendor/bin/phpstan analyse --memory-limit=512M` (0 erros, nivel 6)
+- `composer test` (138 testes)
+
+## 2026-07-18 - Etapa 0.19 (telas de cadastro de parceiro com busca automatica)
+
+### Entregas da etapa 0.19
+
+- **Formulario de parceiro no mesmo nivel do de empresas**: `partners/_form.blade.php` reescrito com `x-ui.input`/`x-ui.select`, tag `<form>` e botoes movidos para `create`/`edit` (padrao do modulo de empresas). Campos de tipo, % do frete (com dica), documento, contato e endereco.
+- **Busca por CNPJ na Receita** reaproveitando `GET /empresas/cnpj/{cnpj}` (`LookupCnpjController`, generico): mascara adaptativa CNPJ/CPF, autofill de `legal_name`/`trade_name`/endereco/telefone/email por `data-cnpj-field` e disparo do `input` para a mascara de telefone. CPF (11 digitos) nao dispara busca.
+- **Busca por CEP no ViaCEP** reaproveitando `GET /empresas/cep/{cep}` (`LookupCepController`): mesma regra de CEP generico (cidade/UF bloqueadas, logradouro/bairro liberados) vs. especifico (endereco preenchido e bloqueado), com `ibge_code` em campo hidden.
+- **Testes de CRUD** (`BusinessPartnerManagementTest`): cadastro com CNPJ (normaliza documento/telefone), documento duplicado rejeitado, CNPJ invalido rejeitado, membro sem papel de gestao bloqueado, edicao, desativacao (soft delete) e isolamento da listagem por empresa ativa.
+
+### Validacoes da etapa 0.19
+
+- `vendor/bin/pint`
+- `vendor/bin/phpstan analyse --memory-limit=512M` (0 erros, nivel 6)
+- `composer test` (145 testes)
+- `npm run build`
+
+## 2026-07-18 - Fix (auto-cura do plano de contas na importacao de CT-e)
+
+### Problema
+
+Importar CT-e numa empresa sem o plano de contas padrao (empresa legada criada antes do seed, ou por demo/seed antigo) estourava `RuntimeException` "Categoria de receita de fretes (1.1) nao encontrada", derrubando toda a importacao com 500 (a transacao inteira do `ImportCte` fazia rollback).
+
+### Correcao
+
+- `EntrySynchronizer` agora recebe `SeedDefaultFinancialCategories`. Quando a categoria `1.1` nao existe **e** a empresa nao tem categoria nenhuma, semeia o plano de contas padrao na hora (dentro da mesma transacao) e reobtem a categoria. So lanca a excecao se, mesmo apos semear, a `1.1` continuar ausente (evita duplicar plano em empresas que ja tem categorias). Empresas legadas se auto-curam na proxima importacao.
+- Novo teste `ImportCteTest::test_importa_cte_semeando_plano_de_contas_para_empresa_legada` cobrindo o cenario (helper com `seedCategories: false`).
+
+### Validacoes do fix
+
+- `vendor/bin/pint`
+- `vendor/bin/phpstan analyse app/Domain/Finance/Actions/EntrySynchronizer.php --memory-limit=512M` (0 erros)
+- `php artisan test --filter=ImportCteTest` (5 testes)
+
+## 2026-07-18 - Etapa 0.20 (cadastro de veiculos)
+
+### Entregas da etapa 0.20
+
+- **Migration `vehicles` expandida** para o escopo completo da 5.2 (a original desta sessao ainda nao foi para producao): identificacao (placa, tipo, situacao, propriedade), especificacoes (marca/modelo, anos, RENAVAM, chassi, RNTRC, eixos, carroceria, combustivel, tanque, tara, capacidades kg/m3), hodometro inicial/atual, financeiro em centavos (aquisicao, residual) + `depreciation_months` e datas. Mantem `provisioned` e `unique(company_id, plate)`.
+- **Enums** `VehicleOwnership` (proprio/arrendado/agregado/terceiro), `VehicleBodyType` (sider, bau, graneleiro, tanque, prancha, frigorifico, cacamba, porta-conteiner) e `VehicleFuelType` (diesel S10/S500, gasolina, etanol, GNV, eletrico), todos com `label()`. Model `Vehicle` com casts (dinheiro em centavos como inteiro, `capacity_m3` decimal, enums, data).
+- **Dominio** (`app/Domain/Fleet`): `VehicleData` (DTO readonly), `CreateVehicle`/`UpdateVehicle`/`DeactivateVehicle` (dedupe por placa, `Gate::authorize` na Action, `TenantContext::runFor`; cadastro/edicao manual zera `provisioned`; `odometer_current` denormalizado nao e sobrescrito no update) e `VehiclePolicy` (papeis de gestao owner/admin).
+- **HTTP**: `VehicleRequest` abstrato (normaliza placa maiuscula sem separador, valida padrao antigo/Mercosul, converte reais -> centavos para `acquisition_value`/`residual_value` sem float na base) + `Store`/`Update`; controllers single-action (list/create/store/show/edit/update/destroy) e rotas `/veiculos`. Policy registrada no `AppServiceProvider`.
+- **Telas** `frotika-ui`: `index` (tabela desktop + card mobile, chip de situacao, selo "Provisionado", filtros por tipo/situacao), `_form` (secoes Identificacao/Especificacoes/Hodometro+depreciacao/Observacoes, mascara de placa no JS), `create`, `edit` (aviso quando provisionado) e `show`. Nav "Veiculos" ligada em Frota; placas de cavalo/carreta no detalhe do CT-e agora linkam para o veiculo.
+- **Teste** `VehicleManagementTest` (cadastro com normalizacao de placa e conversao de valores, placa duplicada/invalida rejeitada, autorizacao, edicao que finaliza veiculo provisionado, desativacao, isolamento por empresa ativa).
+
+### Validacoes da etapa 0.20
+
+- `vendor/bin/pint`
+- `vendor/bin/phpstan analyse --memory-limit=512M` (0 erros, nivel 6)
+- `composer test` (153 testes)
+- `npm run build`
+
+## 2026-07-18 - Etapa 0.21 (telas de contas bancarias e lancamentos financeiros)
+
+Exposicao em tela do backend financeiro que ja existia server-side (Fase 5, parte 1 de 2 — fluxo de caixa fica para a proxima rodada). Renderizacao em Blade + controllers single-action + filtros por query string, consistente com Empresas/Parceiros/Veiculos.
+
+### Entregas da etapa 0.21
+
+- **Helper `App\Support\Money\Brl`**: unica porta de entrada de valor digitado (reais pt-BR "1.500,50") -> centavos inteiros, sem float na base (regra 1). Enum `BankAccountType` (caixa/corrente/poupanca/digital/outra) com `label()`; cast adicionado ao model `BankAccount`.
+- **Contas bancarias** (`/contas`): `BankAccountData` (DTO), actions `CreateBankAccount`/`UpdateBankAccount`/`DeactivateBankAccount` (garante uma unica conta padrao por empresa via limpeza previa do flag; recalculo de saldo pela action existente; bloqueio de remocao quando ha lancamento vinculado) e `BankAccountPolicy` (papeis owner/admin). Requests `Store`/`Update`; controllers list/create/store/edit/update/destroy; views `index`/`_form`/`create`/`edit`.
+- **Lancamentos** (`/lancamentos`): reuso de `CreateManualFinancialEntry`/`UpdateManualFinancialEntry`/`CancelFinancialEntry`; nova action `SettleFinancialEntry` (dar baixa: previsto -> liquidado com conta, data e meio) e `FinancialEntryPolicy`. Tipo do lancamento derivado da categoria no controller (nunca diverge). Requests `Store`/`Update`/`Settle` (reais->centavos, `required_if`/`prohibited_if` por situacao). Controllers list (filtros por situacao/tipo/categoria/veiculo/conta/periodo/descricao + totais), create/store/show/edit/update/settle/destroy. Views `index` (tabela desktop com totais sticky + card mobile), `_form` (categoria agrupada por receita/despesa, radio de situacao com bloco de baixa condicional em JS), `create`/`edit`/`show` (detalhe + formulario de baixa + cancelamento). Edicao bloqueia lancamento sincronizado (CT-e) e transferencia — so a origem altera.
+- **`EntrySynchronizer`**: preserva `status`/`paid_at`/`bank_account_id`/`payment_method` quando o lancamento ja esta liquidado, para que reimportar o CT-e nao desfaca a baixa conciliada. Habilita dar baixa com seguranca tambem na receita de CT-e.
+- **Nav**: "Lancamentos" e "Contas bancarias" ligadas na secao Financeiro; botao central "+" do bottom-nav aponta para novo lancamento.
+
+### Pendencias conhecidas
+
+- **Fluxo de caixa** (tela consumindo `BuildCashFlowMatrix`) fica para a proxima rodada.
+- Reimportar um CT-e ja liquidado com valor diferente atualiza `amount_cents` mas nao recalcula o saldo da conta (cenario raro; revisitar se aparecer).
+
+### Validacoes da etapa 0.21
+
+- `vendor/bin/pint`
+- `vendor/bin/phpstan analyse --memory-limit=1G` (0 erros, nivel 6)
+- `composer test` (165 testes)
+- `npm run build`

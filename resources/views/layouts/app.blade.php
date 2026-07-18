@@ -33,18 +33,23 @@
             'Operação' => [
                 ['label' => 'Painel', 'route' => 'dashboard', 'active' => 'dashboard'],
                 ['label' => 'Viagens', 'route' => null],
+                ['label' => 'CT-e', 'route' => 'cte.index', 'active' => 'cte.*'],
                 ['label' => 'Abastecimentos', 'route' => null],
                 ['label' => 'Manutenções', 'route' => null],
             ],
-            'Frota' => [['label' => 'Veículos', 'route' => null], ['label' => 'Motoristas', 'route' => null]],
+            'Frota' => [
+                ['label' => 'Veículos', 'route' => 'vehicles.index', 'active' => 'vehicles.*'],
+                ['label' => 'Motoristas', 'route' => null],
+            ],
             'Financeiro' => [
-                ['label' => 'Lançamentos', 'route' => null],
+                ['label' => 'Lançamentos', 'route' => 'financial-entries.index', 'active' => 'financial-entries.*'],
                 ['label' => 'Fluxo de caixa', 'route' => null],
-                ['label' => 'Contas bancárias', 'route' => null],
+                ['label' => 'Contas bancárias', 'route' => 'bank-accounts.index', 'active' => 'bank-accounts.*'],
             ],
             'Análise' => [['label' => 'DRE veicular', 'route' => null]],
             'Configurações' => [
                 ['label' => 'Empresas', 'route' => 'companies.index', 'active' => 'companies.*'],
+                ['label' => 'Parceiros', 'route' => 'partners.index', 'active' => 'partners.*'],
             ],
         ];
 
@@ -162,7 +167,8 @@
                         class="hidden items-center gap-1 xl:flex {{ $topbarCompanies->count() > 1 ? '' : 'ml-auto' }}">
                         <x-ui.button variant="ghost" size="sm">+ Viagem</x-ui.button>
                         <x-ui.button variant="ghost" size="sm">+ Abastecimento</x-ui.button>
-                        <x-ui.button variant="ghost" size="sm">Importar CT-e</x-ui.button>
+                        <x-ui.link-button href="{{ route('cte.import') }}" variant="ghost" size="sm">Importar
+                            CT-e</x-ui.link-button>
                     </div>
 
                     <a href="{{ route('welcome') }}"
@@ -257,7 +263,7 @@
                         </svg>
                         Viagens
                     </a>
-                    <button type="button" aria-label="Novo lançamento" class="flex items-center justify-center">
+                    <a href="{{ route('financial-entries.create') }}" aria-label="Novo lançamento" class="flex items-center justify-center">
                         <span
                             class="inline-flex size-10 items-center justify-center rounded-md bg-brand-700 text-white active:bg-brand-800">
                             <svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -265,7 +271,7 @@
                                 <path d="M12 5v14M5 12h14" stroke-linecap="round" />
                             </svg>
                         </span>
-                    </button>
+                    </a>
                     <a href="#"
                         class="flex flex-col items-center justify-center gap-0.5 text-2xs text-slate-400">
                         <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
