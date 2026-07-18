@@ -21,7 +21,8 @@
                     {{ $currentLicense->company?->getAttribute('trade_name') ?? 'Empresa sem nome' }}
                 </p>
                 @if ($currentLicense->is_primary)
-                    <span class="rounded-md border border-accent-200 bg-accent-50 px-2 py-0.5 text-2xs font-semibold text-accent-700">
+                    <span
+                        class="rounded-md border border-accent-200 bg-accent-50 px-2 py-0.5 text-2xs font-semibold text-accent-700">
                         Principal
                     </span>
                 @endif
@@ -60,7 +61,8 @@
                             </a>
                         @endif
                         @if ($currentInvoice->boleto_number)
-                            <span class="font-mono text-xs text-slate-500 tabular">Linha: {{ $currentInvoice->boleto_number }}</span>
+                            <span class="font-mono text-xs text-slate-500 tabular">Linha:
+                                {{ $currentInvoice->boleto_number }}</span>
                         @endif
                     </div>
                 </div>
@@ -78,11 +80,16 @@
             <table class="w-full text-sm">
                 <thead class="sticky top-0 z-10 bg-slate-50">
                     <tr class="border-b border-slate-200">
-                        <th class="px-3 py-2 text-left text-2xs font-semibold uppercase tracking-[0.12em] text-slate-500">Empresa</th>
-                        <th class="px-3 py-2 text-left text-2xs font-semibold uppercase tracking-[0.12em] text-slate-500">Status</th>
-                        <th class="px-3 py-2 text-left text-2xs font-semibold uppercase tracking-[0.12em] text-slate-500">Trial</th>
-                        <th class="px-3 py-2 text-left text-2xs font-semibold uppercase tracking-[0.12em] text-slate-500">Último boleto</th>
-                        <th class="px-3 py-2 text-left text-2xs font-semibold uppercase tracking-[0.12em] text-slate-500">Ações</th>
+                        <th class="px-3 py-2 text-left text-2xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                            Empresa</th>
+                        <th class="px-3 py-2 text-left text-2xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                            Status</th>
+                        <th class="px-3 py-2 text-left text-2xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                            Trial</th>
+                        <th class="px-3 py-2 text-left text-2xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                            Último boleto</th>
+                        <th class="px-3 py-2 text-left text-2xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                            Ações</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -94,9 +101,11 @@
                         <tr class="align-top border-b border-slate-100">
                             <td class="px-3 py-2.5">
                                 <div class="flex items-center gap-2">
-                                    <span class="font-medium text-slate-900">{{ $license->company?->getAttribute('trade_name') ?? 'Empresa sem nome' }}</span>
+                                    <span
+                                        class="font-medium text-slate-900">{{ $license->company?->getAttribute('trade_name') ?? 'Empresa sem nome' }}</span>
                                     @if ($license->is_primary)
-                                        <span class="rounded-md border border-accent-200 bg-accent-50 px-2 py-0.5 text-2xs font-semibold text-accent-700">
+                                        <span
+                                            class="rounded-md border border-accent-200 bg-accent-50 px-2 py-0.5 text-2xs font-semibold text-accent-700">
                                             Principal
                                         </span>
                                     @endif
@@ -114,7 +123,8 @@
                             <td class="px-3 py-2.5">
                                 @if ($invoice)
                                     <p class="font-mono text-sm text-slate-900 tabular">
-                                        <span class="unit">R$</span> {{ Format::moneyDecimal($invoice->amount_cents / 100) }}
+                                        <span class="unit">R$</span>
+                                        {{ Format::moneyDecimal($invoice->amount_cents / 100) }}
                                     </p>
                                     <p class="text-xs text-slate-500">
                                         {{ $invoice->status->label() }} · venc. {{ Format::date($invoice->due_date) }}
@@ -139,42 +149,51 @@
                             </td>
                             <td class="px-3 py-2.5">
                                 @if ($canManageCompanyLicenses)
-                                    <form method="POST" action="{{ route('billing.licenses.issue', ['license' => $license->getKey()]) }}"
+                                    <form method="POST"
+                                        action="{{ route('billing.licenses.issue', ['license' => $license->getKey()]) }}"
                                         class="grid gap-1.5 rounded-md border border-slate-200 bg-slate-50 p-2.5">
                                         @csrf
-                                        <label class="text-2xs font-medium text-slate-600" for="amount_cents_{{ $license->getKey() }}">Mensalidade (centavos)</label>
-                                        <input id="amount_cents_{{ $license->getKey() }}" name="amount_cents" type="number" min="1"
+                                        <label class="text-2xs font-medium text-slate-600"
+                                            for="amount_cents_{{ $license->getKey() }}">Mensalidade (centavos)</label>
+                                        <input id="amount_cents_{{ $license->getKey() }}" name="amount_cents"
+                                            type="number" min="1"
                                             value="{{ $license->monthly_price_cents ?: $defaultMonthlyPriceCents }}"
                                             class="h-8 rounded border border-slate-300 px-2 text-sm text-slate-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
                                             required />
 
-                                        <label class="text-2xs font-medium text-slate-600" for="due_date_{{ $license->getKey() }}">Vencimento</label>
+                                        <label class="text-2xs font-medium text-slate-600"
+                                            for="due_date_{{ $license->getKey() }}">Vencimento</label>
                                         <input id="due_date_{{ $license->getKey() }}" name="due_date" type="date"
                                             value="{{ now()->addDays(3)->toDateString() }}"
                                             class="h-8 rounded border border-slate-300 px-2 text-sm text-slate-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
                                             required />
 
-                                        <label class="text-2xs font-medium text-slate-600" for="reference_month_{{ $license->getKey() }}">Competência (AAAA-MM)</label>
-                                        <input id="reference_month_{{ $license->getKey() }}" name="reference_month" type="month"
-                                            value="{{ now()->format('Y-m') }}"
+                                        <label class="text-2xs font-medium text-slate-600"
+                                            for="reference_month_{{ $license->getKey() }}">Competência (AAAA-MM)</label>
+                                        <input id="reference_month_{{ $license->getKey() }}" name="reference_month"
+                                            type="month" value="{{ now()->format('Y-m') }}"
                                             class="h-8 rounded border border-slate-300 px-2 text-sm text-slate-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
 
-                                        <label class="text-2xs font-medium text-slate-600" for="boleto_number_{{ $license->getKey() }}">Linha digitável</label>
-                                        <input id="boleto_number_{{ $license->getKey() }}" name="boleto_number" type="text"
-                                            placeholder="Opcional"
+                                        <label class="text-2xs font-medium text-slate-600"
+                                            for="boleto_number_{{ $license->getKey() }}">Linha digitável</label>
+                                        <input id="boleto_number_{{ $license->getKey() }}" name="boleto_number"
+                                            type="text" placeholder="Opcional"
                                             class="h-8 rounded border border-slate-300 px-2 text-sm text-slate-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
 
-                                        <label class="text-2xs font-medium text-slate-600" for="boleto_url_{{ $license->getKey() }}">URL do boleto</label>
+                                        <label class="text-2xs font-medium text-slate-600"
+                                            for="boleto_url_{{ $license->getKey() }}">URL do boleto</label>
                                         <input id="boleto_url_{{ $license->getKey() }}" name="boleto_url" type="url"
                                             placeholder="https://..."
                                             class="h-8 rounded border border-slate-300 px-2 text-sm text-slate-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
 
-                                        <label class="text-2xs font-medium text-slate-600" for="boleto_pdf_url_{{ $license->getKey() }}">URL do PDF</label>
-                                        <input id="boleto_pdf_url_{{ $license->getKey() }}" name="boleto_pdf_url" type="url"
-                                            placeholder="https://..."
+                                        <label class="text-2xs font-medium text-slate-600"
+                                            for="boleto_pdf_url_{{ $license->getKey() }}">URL do PDF</label>
+                                        <input id="boleto_pdf_url_{{ $license->getKey() }}" name="boleto_pdf_url"
+                                            type="url" placeholder="https://..."
                                             class="h-8 rounded border border-slate-300 px-2 text-sm text-slate-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
 
-                                        <x-ui.button type="submit" size="sm" class="mt-1">Lançar boleto</x-ui.button>
+                                        <x-ui.button type="submit" size="sm" class="mt-1">Lançar
+                                            boleto</x-ui.button>
                                     </form>
 
                                     @if ($invoice && in_array($invoice->status->value, ['pending', 'overdue'], true))
@@ -182,19 +201,23 @@
                                             action="{{ route('billing.licenses.mark-paid', ['invoice' => $invoice->getKey()]) }}"
                                             class="mt-2 grid gap-1.5 rounded-md border border-success-200 bg-success-50 p-2.5">
                                             @csrf
-                                            <label class="text-2xs font-medium text-success-700" for="paid_at_{{ $invoice->getKey() }}">Data do pagamento</label>
+                                            <label class="text-2xs font-medium text-success-700"
+                                                for="paid_at_{{ $invoice->getKey() }}">Data do pagamento</label>
                                             <input id="paid_at_{{ $invoice->getKey() }}" name="paid_at" type="date"
                                                 value="{{ now()->toDateString() }}"
                                                 class="h-8 rounded border border-success-200 px-2 text-sm text-slate-900 focus:border-success-500 focus:ring-2 focus:ring-success-500/20" />
-                                            <label class="text-2xs font-medium text-success-700" for="paid_note_{{ $invoice->getKey() }}">Observação</label>
-                                            <input id="paid_note_{{ $invoice->getKey() }}" name="paid_note" type="text"
-                                                placeholder="Baixa manual conferida"
+                                            <label class="text-2xs font-medium text-success-700"
+                                                for="paid_note_{{ $invoice->getKey() }}">Observação</label>
+                                            <input id="paid_note_{{ $invoice->getKey() }}" name="paid_note"
+                                                type="text" placeholder="Baixa manual conferida"
                                                 class="h-8 rounded border border-success-200 px-2 text-sm text-slate-900 focus:border-success-500 focus:ring-2 focus:ring-success-500/20" />
-                                            <x-ui.button type="submit" size="sm" variant="secondary">Confirmar pagamento</x-ui.button>
+                                            <x-ui.button type="submit" size="sm" variant="secondary">Confirmar
+                                                pagamento</x-ui.button>
                                         </form>
                                     @endif
                                 @else
-                                    <span class="text-xs text-slate-500">Somente a empresa principal pode lançar ou baixar boletos.</span>
+                                    <span class="text-xs text-slate-500">Somente a empresa principal pode lançar ou baixar
+                                        boletos.</span>
                                 @endif
                             </td>
                         </tr>

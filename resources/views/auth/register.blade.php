@@ -55,8 +55,10 @@
                             data-cnpj-url="{{ url('/registrar/cnpj') }}" value="{{ old('company_cnpj') }}"
                             @class([
                                 'block h-11 w-full rounded-md border bg-white px-3 text-base text-slate-900 transition-colors placeholder:text-slate-400 focus:ring-2 sm:h-9 sm:text-sm',
-                                'border-danger-700 focus:border-danger-700 focus:ring-danger-500/20' => $errors->has('company_cnpj'),
-                                'border-slate-300 focus:border-brand-500 focus:ring-brand-500/20' => !$errors->has('company_cnpj'),
+                                'border-danger-700 focus:border-danger-700 focus:ring-danger-500/20' => $errors->has(
+                                    'company_cnpj'),
+                                'border-slate-300 focus:border-brand-500 focus:ring-brand-500/20' => !$errors->has(
+                                    'company_cnpj'),
                             ]) />
                         <x-ui.button type="button" id="cnpj-lookup-btn" variant="secondary" class="shrink-0">
                             Buscar
@@ -79,8 +81,8 @@
                         placeholder="Preenchido pela consulta do CNPJ" data-cnpj-field="legal_name" readonly required />
                 </div>
 
-                <x-ui.input label="Nome fantasia" name="company_trade_name"
-                    placeholder="Preenchido pela consulta do CNPJ" data-cnpj-field="trade_name" readonly required />
+                <x-ui.input label="Nome fantasia" name="company_trade_name" placeholder="Preenchido pela consulta do CNPJ"
+                    data-cnpj-field="trade_name" readonly required />
 
                 <x-ui.select label="Regime tributário" name="tax_regime" required>
                     <option value="simples" @selected(old('tax_regime', 'simples') === 'simples')>Simples Nacional</option>
@@ -88,15 +90,20 @@
                     <option value="real" @selected(old('tax_regime') === 'real')>Lucro Real</option>
                 </x-ui.select>
 
-                <input type="hidden" name="company_zip_code" data-cnpj-field="zip_code" value="{{ old('company_zip_code') }}" />
+                <input type="hidden" name="company_zip_code" data-cnpj-field="zip_code"
+                    value="{{ old('company_zip_code') }}" />
                 <input type="hidden" name="company_street" data-cnpj-field="street" value="{{ old('company_street') }}" />
                 <input type="hidden" name="company_number" data-cnpj-field="number" value="{{ old('company_number') }}" />
-                <input type="hidden" name="company_complement" data-cnpj-field="complement" value="{{ old('company_complement') }}" />
-                <input type="hidden" name="company_district" data-cnpj-field="district" value="{{ old('company_district') }}" />
+                <input type="hidden" name="company_complement" data-cnpj-field="complement"
+                    value="{{ old('company_complement') }}" />
+                <input type="hidden" name="company_district" data-cnpj-field="district"
+                    value="{{ old('company_district') }}" />
                 <input type="hidden" name="company_city" data-cnpj-field="city" value="{{ old('company_city') }}" />
                 <input type="hidden" name="company_state" data-cnpj-field="state" value="{{ old('company_state') }}" />
-                <input type="hidden" name="company_phone" data-cnpj-field="phone" value="{{ old('company_phone') }}" />
-                <input type="hidden" name="company_email" data-cnpj-field="email" value="{{ old('company_email') }}" />
+                <input type="hidden" name="company_phone" data-cnpj-field="phone"
+                    value="{{ old('company_phone') }}" />
+                <input type="hidden" name="company_email" data-cnpj-field="email"
+                    value="{{ old('company_email') }}" />
 
                 <div class="mt-2 flex flex-wrap items-center justify-end gap-3 sm:col-span-2">
                     <x-ui.link-button href="{{ route('login') }}" variant="secondary">
@@ -112,7 +119,7 @@
     </div>
 
     <script>
-        (function () {
+        (function() {
             const input = document.getElementById('company_cnpj');
             if (!input) {
                 return;
@@ -123,8 +130,11 @@
             const manual = document.getElementById('cnpj-manual');
             const legal = document.querySelector('[data-cnpj-field="legal_name"]');
             const trade = document.querySelector('[data-cnpj-field="trade_name"]');
-            const hiddenFieldKeys = ['zip_code', 'street', 'number', 'complement', 'district', 'city', 'state', 'phone', 'email'];
-            const hiddenFields = Object.fromEntries(hiddenFieldKeys.map((key) => [key, document.querySelector(`[data-cnpj-field="${key}"]`)]));
+            const hiddenFieldKeys = ['zip_code', 'street', 'number', 'complement', 'district', 'city', 'state', 'phone',
+                'email'
+            ];
+            const hiddenFields = Object.fromEntries(hiddenFieldKeys.map((key) => [key, document.querySelector(
+                `[data-cnpj-field="${key}"]`)]));
             const baseUrl = input.dataset.cnpjUrl;
             const lockedClasses = ['bg-slate-50', 'text-slate-500'];
             let lastQueried = null;
@@ -207,7 +217,9 @@
 
                 try {
                     const response = await fetch(`${baseUrl}/${digits}`, {
-                        headers: { Accept: 'application/json' },
+                        headers: {
+                            Accept: 'application/json'
+                        },
                     });
                     const body = await response.json().catch(() => ({}));
 
@@ -237,7 +249,9 @@
 
                     setLocked(false);
                     if (body.status === 'not_found') {
-                        setStatus('CNPJ não encontrado na Receita. Preencha a razão social e o nome fantasia manualmente.', 'warn');
+                        setStatus(
+                            'CNPJ não encontrado na Receita. Preencha a razão social e o nome fantasia manualmente.',
+                            'warn');
                     } else {
                         setStatus('Não foi possível consultar agora. Preencha os dados manualmente.', 'warn');
                     }

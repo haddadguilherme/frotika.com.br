@@ -23,9 +23,10 @@
         if ($licenseBanner !== null) {
             $licenseStatusChip = [
                 'label' => $licenseBanner['status_value'] === 'suspended' ? 'Licença suspensa' : 'Licença bloqueada',
-                'classes' => $licenseBanner['status_value'] === 'suspended'
-                    ? 'border-danger-300 bg-danger-50 text-danger-700'
-                    : 'border-warning-300 bg-warning-50 text-warning-700',
+                'classes' =>
+                    $licenseBanner['status_value'] === 'suspended'
+                        ? 'border-danger-300 bg-danger-50 text-danger-700'
+                        : 'border-warning-300 bg-warning-50 text-warning-700',
             ];
         }
 
@@ -36,19 +37,14 @@
                 ['label' => 'Abastecimentos', 'route' => null],
                 ['label' => 'Manutenções', 'route' => null],
             ],
-            'Frota' => [
-                ['label' => 'Veículos', 'route' => null],
-                ['label' => 'Motoristas', 'route' => null],
-            ],
+            'Frota' => [['label' => 'Veículos', 'route' => null], ['label' => 'Motoristas', 'route' => null]],
             'Financeiro' => [
                 ['label' => 'Lançamentos', 'route' => null],
                 ['label' => 'Fluxo de caixa', 'route' => null],
                 ['label' => 'Contas bancárias', 'route' => null],
                 ['label' => 'Assinatura', 'route' => 'billing.licenses.index', 'active' => 'billing.licenses.*'],
             ],
-            'Análise' => [
-                ['label' => 'DRE veicular', 'route' => null],
-            ],
+            'Análise' => [['label' => 'DRE veicular', 'route' => null]],
         ];
     @endphp
 
@@ -78,7 +74,7 @@
                                             @class([
                                                 'block rounded-md px-2 py-1.5 text-sm',
                                                 'border-l-[3px] border-accent-500 bg-brand-800 font-medium text-white' => $isActive,
-                                                'text-brand-100 hover:bg-brand-800/60' => ! $isActive,
+                                                'text-brand-100 hover:bg-brand-800/60' => !$isActive,
                                             ])>
                                             {{ $item['label'] }}
                                         </a>
@@ -129,10 +125,13 @@
                                 onchange="this.form.requestSubmit()">
                                 @foreach ($topbarCompanies as $companyOption)
                                     @php
-                                        $companyStatusMarker = $topbarCompanyStatusMarkers[$companyOption->getKey()] ?? null;
+                                        $companyStatusMarker =
+                                            $topbarCompanyStatusMarkers[$companyOption->getKey()] ?? null;
                                     @endphp
                                     <option value="{{ $companyOption->getKey() }}" @selected((int) $topbarCurrentCompanyId === $companyOption->getKey())>
-                                        {{ $companyOption->getAttribute('trade_name') }}@if ($companyStatusMarker) [{{ $companyStatusMarker }}] @endif
+                                        {{ $companyOption->getAttribute('trade_name') }}@if ($companyStatusMarker)
+                                            [{{ $companyStatusMarker }}]
+                                        @endif
                                     </option>
                                 @endforeach
                             </select>
@@ -158,7 +157,8 @@
                             class="pointer-events-none absolute right-2 rounded border border-slate-300 px-1.5 py-0.5 font-mono text-2xs text-slate-500 tabular">Ctrl+K</span>
                     </label>
 
-                    <div class="hidden items-center gap-1 xl:flex {{ $topbarCompanies->count() > 1 ? '' : 'ml-auto' }}">
+                    <div
+                        class="hidden items-center gap-1 xl:flex {{ $topbarCompanies->count() > 1 ? '' : 'ml-auto' }}">
                         <x-ui.button variant="ghost" size="sm">+ Viagem</x-ui.button>
                         <x-ui.button variant="ghost" size="sm">+ Abastecimento</x-ui.button>
                         <x-ui.button variant="ghost" size="sm">Importar CT-e</x-ui.button>
@@ -175,14 +175,17 @@
                 @if ($licenseBanner)
                     <div class="mb-4 rounded-md border border-warning-500/40 bg-warning-50 px-4 py-3">
                         <p class="text-sm font-semibold text-warning-700">
-                            Licença da empresa em {{ $licenseBanner['status_label'] }}. Operações de escrita estão bloqueadas.
+                            Licença da empresa em {{ $licenseBanner['status_label'] }}. Operações de escrita estão
+                            bloqueadas.
                         </p>
 
                         @if ($licenseBanner['amount_cents'] !== null)
                             <p class="mt-1 font-mono text-sm text-slate-900 tabular">
-                                <span class="unit">R$</span> {{ Format::moneyDecimal(((int) $licenseBanner['amount_cents']) / 100) }}
+                                <span class="unit">R$</span>
+                                {{ Format::moneyDecimal(((int) $licenseBanner['amount_cents']) / 100) }}
                                 @if ($licenseBanner['due_date'])
-                                    <span class="text-slate-500">· vencimento {{ Format::date($licenseBanner['due_date']) }}</span>
+                                    <span class="text-slate-500">· vencimento
+                                        {{ Format::date($licenseBanner['due_date']) }}</span>
                                 @endif
                             </p>
                         @endif
@@ -208,7 +211,7 @@
                             @endif
                         </div>
 
-                        @if (! $licenseBanner['can_manage'] && $licenseBanner['owner_name'])
+                        @if (!$licenseBanner['can_manage'] && $licenseBanner['owner_name'])
                             <p class="mt-2 text-xs text-slate-600">
                                 Fale com {{ $licenseBanner['owner_name'] }} para regularizar a licença.
                             </p>
@@ -246,9 +249,10 @@
                         </svg>
                         Início
                     </a>
-                    <a href="#" class="flex flex-col items-center justify-center gap-0.5 text-2xs text-slate-400">
-                        <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-                            aria-hidden="true">
+                    <a href="#"
+                        class="flex flex-col items-center justify-center gap-0.5 text-2xs text-slate-400">
+                        <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.5" aria-hidden="true">
                             <path d="M3 6h11v9H3zM14 9h4l3 3v3h-7z" stroke-linejoin="round" />
                             <circle cx="7" cy="17" r="1.6" />
                             <circle cx="17.5" cy="17" r="1.6" />
@@ -264,9 +268,10 @@
                             </svg>
                         </span>
                     </button>
-                    <a href="#" class="flex flex-col items-center justify-center gap-0.5 text-2xs text-slate-400">
-                        <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-                            aria-hidden="true">
+                    <a href="#"
+                        class="flex flex-col items-center justify-center gap-0.5 text-2xs text-slate-400">
+                        <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.5" aria-hidden="true">
                             <rect x="4" y="4" width="7" height="7" rx="1" />
                             <rect x="13" y="4" width="7" height="7" rx="1" />
                             <rect x="4" y="13" width="7" height="7" rx="1" />
@@ -276,8 +281,8 @@
                     </a>
                     <button type="button"
                         class="flex flex-col items-center justify-center gap-0.5 text-2xs text-slate-400">
-                        <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-                            aria-hidden="true">
+                        <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.5" aria-hidden="true">
                             <circle cx="5" cy="12" r="1.6" />
                             <circle cx="12" cy="12" r="1.6" />
                             <circle cx="19" cy="12" r="1.6" />
