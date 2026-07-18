@@ -386,6 +386,8 @@ Fluxo obrigatório: `owner` atual seleciona outro `admin` → confirmação por 
 
 ### 5.3 Viagens e CT-e
 
+> ⚠️ **ADR-005 (2026-07-18): o MVP não tem entidade `Trip`.** O CT-e é a viagem e vincula-se direto ao veículo (`cte_documents.vehicle_id`, provisionado por placa no import). As tabelas `trips` e `trip_cte_document` abaixo **não são criadas** por ora; a navegação fala só em "CT-e". O modelo de Viagem só volta se o DRE precisar de agrupador de km/km-vazio — introdução aditiva, sem perda de dado.
+
 **`cte_documents`**
 
 | Coluna | Tipo | Notas |
@@ -423,7 +425,7 @@ Fluxo obrigatório: `owner` atual seleciona outro `admin` → confirmação por 
 | `imported_by` | FK users, null | |
 | `imported_at` | timestamptz | |
 
-**`trips`**
+**`trips`** *(adiado — ADR-005; mantido aqui como referência caso o DRE exija o agrupador)*
 
 `company_id`, `code` (sequencial por empresa), `vehicle_id` (o cavalo/veículo trator), `vehicle_composition_id` (null), `driver_id`, `origin_city`, `origin_state`, `destination_city`, `destination_state`, `departed_at`, `arrived_at`, `odometer_start`, `odometer_end`, `distance_km` (int, calculado ou informado), `empty_km` (int, null — km vazio), `cargo_weight_kg`, `revenue_cents` (soma dos CT-es), `status` (enum `planned`, `in_progress`, `completed`, `canceled`), `notes`.
 
@@ -1581,15 +1583,16 @@ Cada fase é entregável e testável. Não iniciar a próxima com a anterior ver
 - [ ] Fornecedores
 - [ ] Job diário de alertas de vencimento
 
-### Fase 3 — CT-e e viagens
+### Fase 3 — CT-e *(viagens colapsadas no CT-e — ADR-005)*
 
-- [ ] `CteReader` / `CteParser` / `CteImporter` + **todas as fixtures**
-- [ ] Upload múltiplo + ZIP, batch de jobs, tela de progresso e resultado
-- [ ] `cte_documents`, `trips`, `trip_cte_document`
-- [ ] Sugestão e criação de viagem a partir do CT-e
-- [ ] Indicador "CT-es sem viagem"
-- [ ] Tratamento de complemento/anulação/substituto + evento de cancelamento
-- [ ] CRUD manual de viagem
+- [x] `CteReader` / `CteParser` / `CteImporter`
+- [x] `cte_documents` + `cte_document_business_partner` (parceiros por CT-e)
+- [x] Import com vínculo direto ao veículo por placa (`ProvisionVehicleByPlate`)
+- [x] XML privado por grupo + idempotência + `EntrySynchronizer`
+- [ ] ~~`trips`, `trip_cte_document`~~ — não haverá entidade Viagem no MVP (ADR-005)
+- [ ] ~~Sugestão/criação de viagem a partir do CT-e / indicador "CT-es sem viagem" / CRUD de viagem~~ — idem
+- [ ] Upload em lote (múltiplos/ZIP) + batch de jobs + tela de progresso
+- [ ] Refino de complemento/anulação/substituto + evento de cancelamento
 
 ### Fase 4 — Abastecimentos e manutenções
 

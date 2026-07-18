@@ -32,7 +32,6 @@
         $navSections = [
             'Operação' => [
                 ['label' => 'Painel', 'route' => 'dashboard', 'active' => 'dashboard'],
-                ['label' => 'Viagens', 'route' => null],
                 ['label' => 'CT-e', 'route' => 'cte.index', 'active' => 'cte.*'],
                 ['label' => 'Abastecimentos', 'route' => 'fuelings.index', 'active' => 'fuelings.*'],
                 ['label' => 'Manutenções', 'route' => null],
@@ -165,7 +164,6 @@
 
                     <div
                         class="hidden items-center gap-1 xl:flex {{ $topbarCompanies->count() > 1 ? '' : 'ml-auto' }}">
-                        <x-ui.button variant="ghost" size="sm">+ Viagem</x-ui.button>
                         <x-ui.link-button href="{{ route('fuelings.create') }}" variant="ghost" size="sm">+ Abastecimento</x-ui.link-button>
                         <x-ui.link-button href="{{ route('cte.import') }}" variant="ghost" size="sm">Importar
                             CT-e</x-ui.link-button>
@@ -253,15 +251,18 @@
                         </svg>
                         Início
                     </a>
-                    <a href="#"
-                        class="flex flex-col items-center justify-center gap-0.5 text-2xs text-slate-400">
+                    <a href="{{ route('cte.index') }}"
+                        @class([
+                            'flex flex-col items-center justify-center gap-0.5 text-2xs',
+                            'font-medium text-brand-700' => request()->routeIs('cte.*'),
+                            'text-slate-400' => ! request()->routeIs('cte.*'),
+                        ])>
                         <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                             stroke-width="1.5" aria-hidden="true">
-                            <path d="M3 6h11v9H3zM14 9h4l3 3v3h-7z" stroke-linejoin="round" />
-                            <circle cx="7" cy="17" r="1.6" />
-                            <circle cx="17.5" cy="17" r="1.6" />
+                            <path d="M7 3h7l4 4v14H7z" stroke-linejoin="round" />
+                            <path d="M14 3v4h4M9.5 12h5M9.5 15.5h5" stroke-linecap="round" />
                         </svg>
-                        Viagens
+                        CT-e
                     </a>
                     <a href="{{ route('financial-entries.create') }}" aria-label="Novo lançamento" class="flex items-center justify-center">
                         <span
