@@ -14,7 +14,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('company_id')->constrained()->cascadeOnDelete();
             $table->foreignId('vehicle_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('supplier_id')->nullable();
+            // Oficina: parceiro comercial (kind = workshop).
+            $table->foreignId('supplier_id')->nullable()->constrained('business_partners')->nullOnDelete();
 
             $table->string('type', 20)->default('corrective');
             $table->string('category', 20)->default('other');

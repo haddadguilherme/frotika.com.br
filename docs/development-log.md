@@ -562,3 +562,51 @@ Cadastro enxuto de motoristas (Fleet), conforme pedido: nome, CPF, CNH (numero, 
 - `vendor/bin/phpstan analyse --memory-limit=1G` (0 erros, nivel 6)
 - `composer test` (194 testes)
 - `npm run build`
+
+## 2026-07-18 - Etapa 0.27 (vinculos motorista/veiculo/parceiro como chave)
+
+Revisao geral pedida: transformar toda referencia solta a motorista/veiculo/parceiro em chave estrangeira real, ligando os modelos de entrada (CT-e, abastecimento, manutencao, lancamento) aos cadastros que agora existem. Objetivo: uma so verdade por entidade, navegavel por relacao.
+
+### Auditoria (antes)
+
+- **CT-e**: veiculo e parceiros ja ligados; motorista so como texto (`driver_name`/`driver_cpf`).
+- **Abastecimento**: veiculo ligado; colunas `driver_id`/`supplier_id` existiam mas sem FK, sem relacao e fora do formulario; posto so como texto.
+- **Manutencao**: veiculo ligado; `supplier_id` (oficina) sem FK/relacao/form; oficina so como texto.
+- **Lancamento financeiro**: `vehicle_id`/`driver_id` eram `unsignedBigInteger` cru, sem FK nem relacao.
+
+### Entregas da etapa 0.27
+
+- **Reordenacao de migrations**: `vehicles` (`000162`) e `drivers` (`000164`) passam a ser criadas antes de `financial_entries` (`000170`), permitindo declarar todas as FKs inline (SQLite dos testes nao aceita `ALTER TABLE ADD FOREIGN KEY`).
+- **FKs inline com `nullOnDelete`**: `financial_entries.vehicle_id`->vehicles, `financial_entries.driver_id`->drivers (`trip_id` segue sem FK, ADR-005); `cte_documents.driver_id`->drivers (nova coluna; texto do XML mantido como snapshot); `fuelings.driver_id`->drivers e `fuelings.supplier_id`->business_partners; `maintenances.supplier_id`->business_partners.
+- **Relacoes Eloquent**: `Fueling::driver()`/`station()`, `Maintenance::supplier()`, `CteDocument::driver()`, `FinancialEntry::vehicle()`/`driver()`.
+- **Abastecimento**: `driver_id`/`supplier_id` no `FuelingData`/request/form (selects de motorista e de posto cadastrado kind=gas_station); actions validam que motorista/posto pertencem a empresa ativa (dentro do `runFor`, sob `CompanyScope`); `show` exibe motorista e posto com link.
+- **Manutencao**: `supplier_id` no `MaintenanceData`/request/form (select de oficina kind=workshop/parts); action valida pertencimento; `show` linka a oficina.
+- **CT-e**: nova action `ProvisionDriverByCpf` (find-or-create por CPF, espelha `ProvisionVehicleByPlate`; CPF invalido -> nao vincula). `ImportCte` provisiona o motorista e grava `driver_id`; `EntrySynchronizer::syncFromCte` propaga o `driver_id` a receita.
+- **Testes**: `ImportCteTest` (motorista provisionado pelo CPF do XML e ligado a CT-e + receita); `FuelingManagementTest` (vinculo de motorista+posto propaga ao lancamento; motorista de outra empresa bloqueado); `MaintenanceManagementTest` (oficina cadastrada vinculada); `BuildCashFlowMatrixActionTest` ajustado para usar veiculos reais no filtro (a FK passou a exigir).
+
+### Decisoes da etapa 0.27
+
+- **Parceiro no lancamento via `sourceable`** (nao coluna nova): CT-e/abastecimento/manutencao ja apontam para o parceiro; o lancamento chega ao parceiro pela origem, mantendo o schema do blueprint.
+- **Snapshot do XML preservado**: mesmo com `driver_id`, o CT-e guarda `driver_name`/`driver_cpf` do XML para auditoria da origem.
+- **Vinculo motorista<->veiculo removido do escopo (ADR-006)**: cadastros independentes, sem pivot `driver_vehicle`. A ligacao real e por documento (CT-e liga veiculo por placa e motorista por CPF; abastecimento aponta o motorista).
+
+### Validacoes da etapa 0.27
+
+- `php artisan migrate:fresh`
+- `vendor/bin/pint`
+- `vendor/bin/phpstan analyse --memory-limit=1G` (0 erros, nivel 6)
+- `composer test` (198 testes)
+- `npm run build`
+
+## 2026-07-18 - Etapa 0.28 (ADR-006: fora de escopo composicao e vinculo motorista-veiculo)
+
+Decisao de escopo do usuario: o sistema **nao** tera composicao de veiculos (engate/desengate) nem vinculo motorista<->veiculo. Sao apenas cadastros independentes. Mudanca documental — nenhum codigo dessas features existia (nunca foram implementadas).
+
+### Entregas da etapa 0.28
+
+- **ADR-006** (`docs/adr/006-sem-composicao-de-veiculos-nem-vinculo-motorista-veiculo.md`): remove do escopo `vehicle_compositions`, `vehicle_composition_items` e `driver_vehicle`; DRE passa a trabalhar por `vehicle_id` sem modo "conjunto" (modos: individual, comparativo, consolidado).
+- **Blueprint atualizado**: secao 5.2 (nota ADR-006 no lugar dos blocos de composicao e do `driver_vehicle`), 5.3 (`trips` sem `vehicle_composition_id`), 6.1 (estrutura `Fleet/` sem `VehicleComposition`), 6.2 (sai a rota `/veiculos/{v}/conjuntos`), 9.2/9.5 (`DreBuilder` sem passo de composicao; modos sem "conjunto"), 14.4 (demo sem composicoes vigentes), 15 (Fase 2 riscada), 17 (glossario sem "Conjunto"/`VehicleComposition`) e o quadro de escopo do topo.
+
+### Validacoes da etapa 0.28
+
+- Mudanca documental (blueprint + ADR); sem alteracao de codigo/testes.

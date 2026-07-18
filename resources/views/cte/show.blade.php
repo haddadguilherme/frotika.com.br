@@ -124,7 +124,13 @@
                     </div>
                     <div>
                         <dt class="text-2xs uppercase tracking-wide text-slate-400">Motorista</dt>
-                        <dd class="text-slate-900">{{ $document->getAttribute('driver_name') ?? '—' }}</dd>
+                        <dd class="text-slate-900">
+                            @if ($document->driver)
+                                <a href="{{ route('drivers.show', ['driver' => $document->driver->getKey()]) }}" class="font-medium text-brand-700 hover:text-brand-800">{{ $document->driver->getAttribute('name') }}</a>
+                            @else
+                                {{ $document->getAttribute('driver_name') ?? '—' }}
+                            @endif
+                        </dd>
                     </div>
                 </dl>
             </div>

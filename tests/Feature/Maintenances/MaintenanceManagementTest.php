@@ -8,6 +8,7 @@ use App\Domain\Finance\Actions\SeedDefaultFinancialCategories;
 use App\Domain\Finance\Models\FinancialEntry;
 use App\Domain\Fleet\Models\Vehicle;
 use App\Domain\Maintenances\Models\Maintenance;
+use App\Domain\Partners\Models\BusinessPartner;
 use App\Domain\Tenancy\Models\Company;
 use App\Domain\Tenancy\Models\Group;
 use App\Models\User;
@@ -142,6 +143,26 @@ final class MaintenanceManagementTest extends TestCase
         $this->actingAs($intruder)
             ->get(route('maintenances.show', ['maintenance' => $maintenance->getKey()]))
             ->assertNotFound();
+    }
+
+    public function test_manutencao_vincula_oficina_cadastrada(): void
+    {
+        [$owner, $company, $vehicle] = $this->scenario(8);
+
+        $workshopId = app(TenantContext::class)->runFor($company, fn (): int => (int) BusinessPartner::query()->create([
+            'legal_name' => 'Oficina do Zé LTDA', 'kind' => 'workshop', 'active' => true,
+        ])->getKey());
+
+        $this->actingAs($owner)->post(route('maintenances.store'), $this->payload($vehicle, [
+            'supplier_id' => $workshopId,
+            'labor' => '100,00', 'parts' => '50,00',
+        ]))->assertRedirect();
+
+        $this->assertDatabaseHas('maintenances', [
+            'company_id' => $company->getKey(),
+            'supplier_id' => $workshopId,
+            'total_cents' => 15000,
+        ]);
     }
 
     /**

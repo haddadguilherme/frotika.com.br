@@ -5,6 +5,9 @@
     $tanks = \App\Domain\Fuelings\Enums\FuelTank::cases();
     $paymentMethods = \App\Domain\Fuelings\Enums\FuelingPaymentMethod::cases();
 
+    $drivers = $drivers ?? collect();
+    $stations = $stations ?? collect();
+
     $val = fn (string $field) => old($field, $fueling?->getAttribute($field));
     $enumVal = fn (string $field) => old($field, $fueling?->getAttribute($field)?->value);
 
@@ -48,6 +51,15 @@
 
             <x-ui.input label="Odômetro (km)" name="odometer" :value="$val('odometer')" type="number"
                 inputmode="numeric" min="0" class="text-right font-mono tabular" required />
+
+            <x-ui.select label="Motorista" name="driver_id">
+                <option value="">— Não informado</option>
+                @foreach ($drivers as $driverOption)
+                    <option value="{{ $driverOption->getKey() }}" @selected((int) $val('driver_id') === (int) $driverOption->getKey())>
+                        {{ $driverOption->getAttribute('name') }}
+                    </option>
+                @endforeach
+            </x-ui.select>
 
             <label class="flex items-center gap-2 pt-6">
                 <input type="checkbox" name="full_tank" value="1" @checked((bool) old('full_tank', $fueling?->getAttribute('full_tank')))
@@ -109,10 +121,19 @@
     <section>
         <h2 class="mb-3 text-sm font-semibold text-slate-900">Posto</h2>
         <div class="grid gap-4 sm:grid-cols-3">
+            <x-ui.select label="Posto cadastrado" name="supplier_id" class="sm:col-span-3">
+                <option value="">— Não vincular</option>
+                @foreach ($stations as $stationOption)
+                    <option value="{{ $stationOption->getKey() }}" @selected((int) $val('supplier_id') === (int) $stationOption->getKey())>
+                        {{ $stationOption->getAttribute('trade_name') ?: $stationOption->getAttribute('legal_name') }}
+                    </option>
+                @endforeach
+            </x-ui.select>
+        </div>
+        <p class="mt-2 text-xs text-slate-500">Vincule um posto do cadastro de parceiros (tipo Posto) ou preencha os campos abaixo à mão.</p>
+        <div class="mt-4 grid gap-4 sm:grid-cols-3">
             <x-ui.input label="Nome" name="station_name" :value="$val('station_name')" placeholder="Opcional" class="sm:col-span-2" />
             <x-ui.input label="Cidade" name="station_city" :value="$val('station_city')" placeholder="Opcional" />
-        </div>
-        <div class="mt-4 grid gap-4 sm:grid-cols-3">
             <x-ui.input label="UF" name="station_state" :value="$val('station_state')" maxlength="2"
                 class="uppercase" placeholder="Ex.: SP" />
         </div>

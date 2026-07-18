@@ -20,6 +20,7 @@ abstract class MaintenanceRequest extends FormRequest
     {
         return [
             'vehicle_id' => ['required', 'integer', 'min:1'],
+            'supplier_id' => ['nullable', 'integer', 'min:1'],
             'type' => ['required', Rule::in($this->enumValues(MaintenanceType::cases()))],
             'category' => ['required', Rule::in($this->enumValues(MaintenanceCategory::cases()))],
             'status' => ['required', Rule::in($this->enumValues(MaintenanceStatus::cases()))],
@@ -60,6 +61,7 @@ abstract class MaintenanceRequest extends FormRequest
     {
         return [
             'vehicle_id' => 'veículo',
+            'supplier_id' => 'oficina',
             'type' => 'tipo',
             'category' => 'categoria',
             'status' => 'situação',
@@ -81,6 +83,7 @@ abstract class MaintenanceRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $this->merge([
+            'supplier_id' => $this->nullableId('supplier_id'),
             'type' => (string) ($this->input('type') ?: MaintenanceType::Corrective->value),
             'category' => (string) ($this->input('category') ?: MaintenanceCategory::Other->value),
             'status' => (string) ($this->input('status') ?: MaintenanceStatus::Open->value),
@@ -134,5 +137,12 @@ abstract class MaintenanceRequest extends FormRequest
         $value = trim((string) $this->input($key, ''));
 
         return $value === '' ? null : $value;
+    }
+
+    protected function nullableId(string $key): ?int
+    {
+        $value = trim((string) $this->input($key, ''));
+
+        return $value === '' ? null : (int) $value;
     }
 }

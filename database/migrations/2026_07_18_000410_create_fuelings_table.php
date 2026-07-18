@@ -14,9 +14,10 @@ return new class extends Migration
             $table->id();
             $table->foreignId('company_id')->constrained()->cascadeOnDelete();
             $table->foreignId('vehicle_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('driver_id')->nullable();
-            $table->foreignId('trip_id')->nullable();
-            $table->foreignId('supplier_id')->nullable();
+            $table->foreignId('driver_id')->nullable()->constrained('drivers')->nullOnDelete();
+            $table->unsignedBigInteger('trip_id')->nullable();
+            // Posto: parceiro comercial (kind = gas_station).
+            $table->foreignId('supplier_id')->nullable()->constrained('business_partners')->nullOnDelete();
 
             $table->timestamp('fueled_at');
             $table->unsignedInteger('odometer');

@@ -8,6 +8,7 @@ use App\Domain\Fleet\Models\Vehicle;
 use App\Domain\Maintenances\Enums\MaintenanceCategory;
 use App\Domain\Maintenances\Enums\MaintenanceStatus;
 use App\Domain\Maintenances\Enums\MaintenanceType;
+use App\Domain\Partners\Models\BusinessPartner;
 use App\Models\User;
 use App\Support\Tenancy\BelongsToCompany;
 use Illuminate\Database\Eloquent\Model;
@@ -53,6 +54,16 @@ final class Maintenance extends Model
     public function vehicle(): BelongsTo
     {
         return $this->belongsTo(Vehicle::class, 'vehicle_id');
+    }
+
+    /**
+     * Oficina que executou o serviço (parceiro comercial, kind = workshop).
+     *
+     * @return BelongsTo<BusinessPartner, $this>
+     */
+    public function supplier(): BelongsTo
+    {
+        return $this->belongsTo(BusinessPartner::class, 'supplier_id');
     }
 
     /**

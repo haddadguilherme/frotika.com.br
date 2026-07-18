@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Domain\Fuelings\Actions;
 
+use App\Domain\Fleet\Models\Driver;
 use App\Domain\Fleet\Models\Vehicle;
 use App\Domain\Fuelings\Data\FuelingData;
 use App\Domain\Fuelings\Models\Fueling;
+use App\Domain\Partners\Models\BusinessPartner;
 use App\Domain\Tenancy\Models\Company;
 use App\Models\User;
 use App\Support\Format;
@@ -35,6 +37,7 @@ final class CreateFueling
             }
 
             $this->guardOdometer($vehicle, $data->odometer, $data->allowOdometerRollback);
+            $this->guardLinks($data);
 
             $attributes = $data->toAttributes();
             $attributes['company_id'] = $company->getKey();
@@ -51,6 +54,26 @@ final class CreateFueling
 
             return $fueling->refresh();
         });
+    }
+
+    /**
+     * Garante que motorista e posto informados pertencem à empresa ativa
+     * (o CompanyScope filtra as consultas dentro do runFor), evitando vincular
+     * registro de outro tenant por manipulação do formulário.
+     */
+    private function guardLinks(FuelingData $data): void
+    {
+        if ($data->driverId !== null && ! Driver::query()->whereKey($data->driverId)->exists()) {
+            throw ValidationException::withMessages([
+                'driver_id' => 'Selecione um motorista válido da empresa ativa.',
+            ]);
+        }
+
+        if ($data->supplierId !== null && ! BusinessPartner::query()->whereKey($data->supplierId)->exists()) {
+            throw ValidationException::withMessages([
+                'supplier_id' => 'Selecione um posto válido da empresa ativa.',
+            ]);
+        }
     }
 
     private function guardOdometer(Vehicle $vehicle, int $odometer, bool $allowRollback): void

@@ -91,7 +91,7 @@ final class EntrySynchronizer
                 'financial_category_id' => $category->getKey(),
                 'bank_account_id' => null,
                 'vehicle_id' => $cte->getAttribute('vehicle_id'),
-                'driver_id' => null,
+                'driver_id' => $cte->getAttribute('driver_id'),
                 'trip_id' => null,
                 'type' => FinancialEntryType::Revenue->value,
                 'description' => $this->description($cte),

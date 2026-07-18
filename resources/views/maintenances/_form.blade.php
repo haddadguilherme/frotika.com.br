@@ -5,6 +5,8 @@
     $categories = \App\Domain\Maintenances\Enums\MaintenanceCategory::cases();
     $statuses = \App\Domain\Maintenances\Enums\MaintenanceStatus::cases();
 
+    $workshops = $workshops ?? collect();
+
     $val = fn (string $field) => old($field, $maintenance?->getAttribute($field));
     $enumVal = fn (string $field) => old($field, $maintenance?->getAttribute($field)?->value);
     $dateVal = fn (string $field) => old($field, $maintenance?->getAttribute($field)?->format('Y-m-d'));
@@ -53,7 +55,17 @@
 
             <x-ui.input label="Odômetro (km)" name="odometer" :value="$val('odometer')" type="number"
                 inputmode="numeric" min="0" class="text-right font-mono tabular" placeholder="Opcional" />
-            <x-ui.input label="Oficina" name="workshop_name" :value="$val('workshop_name')" placeholder="Opcional" />
+
+            <x-ui.select label="Oficina cadastrada" name="supplier_id">
+                <option value="">— Não vincular</option>
+                @foreach ($workshops as $workshopOption)
+                    <option value="{{ $workshopOption->getKey() }}" @selected((int) $val('supplier_id') === (int) $workshopOption->getKey())>
+                        {{ $workshopOption->getAttribute('trade_name') ?: $workshopOption->getAttribute('legal_name') }}
+                    </option>
+                @endforeach
+            </x-ui.select>
+
+            <x-ui.input label="Oficina (texto livre)" name="workshop_name" :value="$val('workshop_name')" placeholder="Se não estiver cadastrada" />
         </div>
         <p class="mt-2 text-xs text-slate-500">Preventiva entra como custo fixo (4.3); as demais, como manutenção corretiva (3.4). A despesa vira uma conta a pagar no financeiro.</p>
     </section>

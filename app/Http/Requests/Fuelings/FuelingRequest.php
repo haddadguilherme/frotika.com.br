@@ -20,6 +20,8 @@ abstract class FuelingRequest extends FormRequest
     {
         return [
             'vehicle_id' => ['required', 'integer', 'min:1'],
+            'driver_id' => ['nullable', 'integer', 'min:1'],
+            'supplier_id' => ['nullable', 'integer', 'min:1'],
             'fueled_at' => ['required', 'date'],
             'odometer' => ['required', 'integer', 'min:0', 'max:9999999'],
             'product' => ['required', Rule::in($this->enumValues(FuelProduct::cases()))],
@@ -60,6 +62,8 @@ abstract class FuelingRequest extends FormRequest
     {
         return [
             'vehicle_id' => 'veículo',
+            'driver_id' => 'motorista',
+            'supplier_id' => 'posto',
             'fueled_at' => 'data',
             'odometer' => 'odômetro',
             'product' => 'produto',
@@ -79,6 +83,8 @@ abstract class FuelingRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $this->merge([
+            'driver_id' => $this->nullableId('driver_id'),
+            'supplier_id' => $this->nullableId('supplier_id'),
             'liters' => $this->normalizeDecimal('liters'),
             'price_per_liter' => $this->normalizeDecimal('price_per_liter'),
             'total_cents' => Brl::toCents($this->input('total')),
@@ -135,6 +141,13 @@ abstract class FuelingRequest extends FormRequest
         $value = trim((string) $this->input($key, ''));
 
         return $value === '' ? null : $value;
+    }
+
+    protected function nullableId(string $key): ?int
+    {
+        $value = trim((string) $this->input($key, ''));
+
+        return $value === '' ? null : (int) $value;
     }
 
     protected function nullableUpper(string $key): ?string

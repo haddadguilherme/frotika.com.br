@@ -15,8 +15,9 @@ return new class extends Migration
             $table->foreignId('company_id')->constrained()->cascadeOnDelete();
             $table->foreignId('bank_account_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('financial_category_id')->constrained()->restrictOnDelete();
-            $table->unsignedBigInteger('vehicle_id')->nullable();
-            $table->unsignedBigInteger('driver_id')->nullable();
+            $table->foreignId('vehicle_id')->nullable()->constrained('vehicles')->nullOnDelete();
+            $table->foreignId('driver_id')->nullable()->constrained('drivers')->nullOnDelete();
+            // trip_id fica sem FK: entidade Trip adiada (ADR-005).
             $table->unsignedBigInteger('trip_id')->nullable();
             $table->string('type', 20);
             $table->string('description', 200);

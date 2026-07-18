@@ -10,6 +10,7 @@ use App\Domain\Finance\Actions\SeedDefaultFinancialCategories;
 use App\Domain\Finance\Enums\FinancialEntryStatus;
 use App\Domain\Finance\Enums\FinancialEntryType;
 use App\Domain\Finance\Models\FinancialEntry;
+use App\Domain\Fleet\Models\Driver;
 use App\Domain\Partners\Enums\BusinessPartnerKind;
 use App\Domain\Partners\Models\BusinessPartner;
 use App\Domain\Tenancy\Models\Company;
@@ -83,6 +84,29 @@ final class ImportCteTest extends TestCase
         $this->assertNull($entry->getAttribute('paid_at'));
         $this->assertSame('2026-07-13', $entry->getAttribute('competence_date')->toDateString());
         $this->assertSame('2026-08-12', $entry->getAttribute('due_date')->toDateString());
+    }
+
+    public function test_importa_cte_provisiona_e_vincula_o_motorista(): void
+    {
+        Storage::fake('local');
+        [$owner, $company] = $this->createOwnerWithCompany();
+
+        $this->actingAs($owner)->post(route('cte.import.store'), ['xml' => $this->upload()])->assertRedirect();
+
+        // Motorista provisionado pelo CPF do XML (deduplicado por CPF).
+        $this->assertDatabaseHas('drivers', [
+            'company_id' => $company->getKey(),
+            'cpf' => '09831473612',
+            'name' => 'UELINTON CAROLINO DOS SANTOS',
+        ]);
+
+        $driver = Driver::withoutGlobalScopes()->where('cpf', '09831473612')->firstOrFail();
+        $cte = CteDocument::withoutGlobalScopes()->firstOrFail();
+        $entry = FinancialEntry::withoutGlobalScopes()->firstOrFail();
+
+        // Vínculo por chave: CT-e e receita apontam para o mesmo motorista.
+        $this->assertSame($driver->getKey(), (int) $cte->getAttribute('driver_id'));
+        $this->assertSame($driver->getKey(), (int) $entry->getAttribute('driver_id'));
     }
 
     public function test_valor_da_receita_e_percentual_do_frete_da_contratante(): void

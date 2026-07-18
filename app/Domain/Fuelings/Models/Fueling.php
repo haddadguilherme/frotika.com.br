@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Domain\Fuelings\Models;
 
+use App\Domain\Fleet\Models\Driver;
 use App\Domain\Fleet\Models\Vehicle;
 use App\Domain\Fuelings\Enums\FuelingPaymentMethod;
 use App\Domain\Fuelings\Enums\FuelProduct;
 use App\Domain\Fuelings\Enums\FuelTank;
+use App\Domain\Partners\Models\BusinessPartner;
 use App\Models\User;
 use App\Support\Tenancy\BelongsToCompany;
 use Illuminate\Database\Eloquent\Model;
@@ -53,6 +55,24 @@ final class Fueling extends Model
     public function vehicle(): BelongsTo
     {
         return $this->belongsTo(Vehicle::class, 'vehicle_id');
+    }
+
+    /**
+     * @return BelongsTo<Driver, $this>
+     */
+    public function driver(): BelongsTo
+    {
+        return $this->belongsTo(Driver::class, 'driver_id');
+    }
+
+    /**
+     * Posto onde abasteceu (parceiro comercial, kind = gas_station).
+     *
+     * @return BelongsTo<BusinessPartner, $this>
+     */
+    public function station(): BelongsTo
+    {
+        return $this->belongsTo(BusinessPartner::class, 'supplier_id');
     }
 
     /**

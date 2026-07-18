@@ -13,7 +13,9 @@ final class ShowMaintenanceController
 {
     public function __invoke(int $maintenance): View
     {
-        $model = Maintenance::query()->with('vehicle:id,plate,type')->findOrFail($maintenance);
+        $model = Maintenance::query()
+            ->with(['vehicle:id,plate,type', 'supplier:id,legal_name,trade_name'])
+            ->findOrFail($maintenance);
 
         Gate::authorize('view', $model);
 

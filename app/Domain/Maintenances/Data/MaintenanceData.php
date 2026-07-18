@@ -18,6 +18,7 @@ final readonly class MaintenanceData
         public string $openedAt,
         public int $laborCents = 0,
         public int $partsCents = 0,
+        public ?int $supplierId = null,
         public ?string $closedAt = null,
         public ?int $odometer = null,
         public ?string $workshopName = null,
@@ -42,6 +43,7 @@ final readonly class MaintenanceData
             openedAt: (string) $data['opened_at'],
             laborCents: self::nullableInt($data['labor_cents'] ?? null) ?? 0,
             partsCents: self::nullableInt($data['parts_cents'] ?? null) ?? 0,
+            supplierId: self::nullableInt($data['supplier_id'] ?? null),
             closedAt: self::nullableString($data['closed_at'] ?? null),
             odometer: self::nullableInt($data['odometer'] ?? null),
             workshopName: self::nullableString($data['workshop_name'] ?? null),
@@ -61,6 +63,7 @@ final readonly class MaintenanceData
     {
         return [
             'vehicle_id' => $this->vehicleId,
+            'supplier_id' => $this->supplierId,
             'type' => $this->type->value,
             'category' => $this->category->value,
             'status' => $this->status->value,

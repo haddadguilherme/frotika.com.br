@@ -21,6 +21,8 @@ final readonly class FuelingData
         public bool $fullTank = false,
         public ?float $pricePerLiter = null,
         public ?int $totalCents = null,
+        public ?int $driverId = null,
+        public ?int $supplierId = null,
         public ?string $stationName = null,
         public ?string $stationCity = null,
         public ?string $stationState = null,
@@ -45,6 +47,8 @@ final readonly class FuelingData
             fullTank: (bool) ($data['full_tank'] ?? false),
             pricePerLiter: self::nullableFloat($data['price_per_liter'] ?? null),
             totalCents: self::nullableInt($data['total_cents'] ?? null),
+            driverId: self::nullableInt($data['driver_id'] ?? null),
+            supplierId: self::nullableInt($data['supplier_id'] ?? null),
             stationName: self::nullableString($data['station_name'] ?? null),
             stationCity: self::nullableString($data['station_city'] ?? null),
             stationState: self::nullableUpper($data['station_state'] ?? null),
@@ -71,6 +75,8 @@ final readonly class FuelingData
 
         return [
             'vehicle_id' => $this->vehicleId,
+            'driver_id' => $this->driverId,
+            'supplier_id' => $this->supplierId,
             'fueled_at' => $this->fueledAt,
             'odometer' => $this->odometer,
             'product' => $this->product->value,

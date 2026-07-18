@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Trips\Actions;
 
+use App\Domain\Fleet\Actions\ProvisionDriverByCpf;
 use App\Domain\Fleet\Actions\ProvisionVehicleByPlate;
 use App\Domain\Fleet\Enums\VehicleType;
 use App\Domain\Partners\Actions\UpsertBusinessPartner;
@@ -34,6 +35,7 @@ final class ImportCte
         private readonly CteParser $parser,
         private readonly UpsertBusinessPartner $upsertBusinessPartner,
         private readonly ProvisionVehicleByPlate $provisionVehicleByPlate,
+        private readonly ProvisionDriverByCpf $provisionDriverByCpf,
     ) {}
 
     public function execute(User $actor, Company $company, string $xml, ?string $originalName = null): CteDocument
@@ -49,6 +51,7 @@ final class ImportCte
 
             $tractor = $this->provisionVehicleByPlate->execute($company, $data->tractorPlate, VehicleType::Tractor);
             $trailer = $this->provisionVehicleByPlate->execute($company, $data->trailerPlate, VehicleType::SemiTrailer);
+            $driver = $this->provisionDriverByCpf->execute($company, $data->driverCpf, $data->driverName);
 
             $xmlPath = $this->storeXml($company, $data, $xml);
 
@@ -99,6 +102,7 @@ final class ImportCte
                     'protocol_number' => $data->protocolNumber,
                     'vehicle_id' => $tractor?->getKey(),
                     'trailer_vehicle_id' => $trailer?->getKey(),
+                    'driver_id' => $driver?->getKey(),
                     'driver_name' => $data->driverName,
                     'driver_cpf' => $data->driverCpf,
                     'xml_path' => $xmlPath,

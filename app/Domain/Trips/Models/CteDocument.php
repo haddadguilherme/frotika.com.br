@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Trips\Models;
 
+use App\Domain\Fleet\Models\Driver;
 use App\Domain\Fleet\Models\Vehicle;
 use App\Domain\Partners\Models\BusinessPartner;
 use App\Domain\Trips\Enums\CteServiceType;
@@ -65,6 +66,14 @@ final class CteDocument extends Model
     public function trailer(): BelongsTo
     {
         return $this->belongsTo(Vehicle::class, 'trailer_vehicle_id');
+    }
+
+    /**
+     * @return BelongsTo<Driver, $this>
+     */
+    public function driver(): BelongsTo
+    {
+        return $this->belongsTo(Driver::class, 'driver_id');
     }
 
     /**

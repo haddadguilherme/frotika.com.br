@@ -45,7 +45,7 @@ Um sistema onde o operador lança o que já acontece no dia a dia (viagem, abast
 | Incluído | Fora do MVP |
 | --- | --- |
 | Cadastro de grupo/empresas/usuários | Emissão de CT-e / MDF-e |
-| Veículos (cavalo, carreta, conjunto) | Roteirização / rastreamento em tempo real |
+| Veículos (cavalo, carreta) | Roteirização / rastreamento em tempo real |
 | Motoristas | Folha de pagamento completa |
 | Viagens via XML de CT-e | Integração contábil (SPED) |
 | Abastecimentos | App mobile nativo |
@@ -365,22 +365,13 @@ Fluxo obrigatório: `owner` atual seleciona outro `admin` → confirmação por 
 | `status` | enum | `active`, `inactive`, `maintenance`, `sold` |
 | `notes` | text, null | |
 
-**`vehicle_compositions`** — o conjunto cavalo + carreta(s), com vigência.
-
-`company_id`, `tractor_vehicle_id` (FK vehicles), `name`, `started_at` (date), `ended_at` (date, null = vigente).
-Índice: (`company_id`, `tractor_vehicle_id`, `started_at`).
-
-**`vehicle_composition_items`** — `vehicle_composition_id`, `trailer_vehicle_id`, `position` (1 = primeira carreta).
-
-> **Por que existe:** o custo de pneu e manutenção da carreta precisa entrar no DRE do conjunto que gerou a receita. Sem vigência, não há como saber qual carreta estava atrás do cavalo em março.
+> ⚠️ **ADR-006 (2026-07-18): sem composição de veículos (engate/desengate) nem vínculo motorista↔veículo.** As tabelas `vehicle_compositions`, `vehicle_composition_items` e `driver_vehicle` **não são criadas**. Cavalo, carreta e motorista são cadastros independentes; o CT-e já traz cavalo e carreta por placa (`cte_documents.vehicle_id` / `trailer_vehicle_id`) e o motorista por CPF, então o rateio de custo da carreta se resolve pelo lançamento apontar o veículo, não por um conjunto vigente. Se algum dia o DRE precisar somar carretas a um cavalo, volta como introdução aditiva.
 
 **`drivers`**
 
 `company_id`, `user_id` (null), `name`, `cpf` (unique por company), `birth_date`, `phone`, `email`, `cnh_number`, `cnh_category` (enum `A`..`E`, `AE`...), `cnh_expires_at`, `cnh_first_license_at`, `has_mopp` (bool), `mopp_expires_at`, `toxicological_exam_at`, `hired_at`, `terminated_at`, `pay_type` (enum `fixed`, `commission`, `per_km`, `mixed`), `pay_base_cents`, `commission_percent` (decimal 5,2), `per_km_cents`, `status` (enum `active`, `inactive`, `terminated`), endereço, `notes`.
 
 > **Alertas obrigatórios:** CNH vencendo em 30 dias, MOPP vencendo, exame toxicológico vencendo. Job diário → notificação no sino + e-mail.
-
-**`driver_vehicle`** — vínculo com vigência: `driver_id`, `vehicle_id`, `started_at`, `ended_at`.
 
 **`business_partners`** (substitui `suppliers` — ver ADR-004) — `company_id`, `document` (null), `document_type` (enum `cnpj`, `cpf`, `none`), `legal_name`, `trade_name` (null), `kind` (enum `contractor`, `customer`, `carrier`, `gas_station`, `workshop`, `parts`, `other`), `default_freight_share_percent` (decimal 5,2, null — % do frete que a contratante repassa ao agregado), `state_registration`, `phone`, `email`, endereço (`zip_code`, `street`, `number`, `complement`, `district`, `city`, `state`, `ibge_code`), `notes`, `active`, soft deletes. `unique(company_id, document)`. Cadastro único deduplicado por documento; a importação de CT-e cadastra as partes automaticamente (emitente = `contractor`) e enriquece sem sobrescrever edição manual.
 
@@ -427,7 +418,7 @@ Fluxo obrigatório: `owner` atual seleciona outro `admin` → confirmação por 
 
 **`trips`** *(adiado — ADR-005; mantido aqui como referência caso o DRE exija o agrupador)*
 
-`company_id`, `code` (sequencial por empresa), `vehicle_id` (o cavalo/veículo trator), `vehicle_composition_id` (null), `driver_id`, `origin_city`, `origin_state`, `destination_city`, `destination_state`, `departed_at`, `arrived_at`, `odometer_start`, `odometer_end`, `distance_km` (int, calculado ou informado), `empty_km` (int, null — km vazio), `cargo_weight_kg`, `revenue_cents` (soma dos CT-es), `status` (enum `planned`, `in_progress`, `completed`, `canceled`), `notes`.
+`company_id`, `code` (sequencial por empresa), `vehicle_id` (o cavalo/veículo trator), `driver_id`, `origin_city`, `origin_state`, `destination_city`, `destination_state`, `departed_at`, `arrived_at`, `odometer_start`, `odometer_end`, `distance_km` (int, calculado ou informado), `empty_km` (int, null — km vazio), `cargo_weight_kg`, `revenue_cents` (soma dos CT-es), `status` (enum `planned`, `in_progress`, `completed`, `canceled`), `notes`.
 
 **`trip_cte_document`** — `trip_id`, `cte_document_id`, `revenue_share_cents`.
 Uma viagem pode ter N CT-es. Um CT-e pertence a no máximo 1 viagem. Quando N CT-es numa viagem, cada um mantém sua receita própria — `revenue_share_cents` existe para o caso inverso: um CT-e cobrindo mais de um veículo (raro; ratear por km).
@@ -640,7 +631,7 @@ Cada empresa nasce com uma **cópia** dessas categorias (`company_id` preenchido
 app/
 ├── Domain/
 │   ├── Tenancy/          Group, Company, Invitation, actions, policies
-│   ├── Fleet/            Vehicle, VehicleComposition, Driver, Supplier
+│   ├── Fleet/            Vehicle, Driver (BusinessPartner vive em Partners/)
 │   ├── Trips/            Trip, CteDocument
 │   │   └── Cte/          CteReader, CteParser, CteImporter, DTOs, exceptions
 │   ├── Fuelings/         Fueling, FuelConsumptionCalculator
@@ -676,7 +667,6 @@ Cada `Domain/X` tem: `Models/`, `Actions/`, `Data/` (DTOs), `Enums/`, `Policies/
 /onboarding
 /painel                    → dashboard
 /veiculos                  index · create · edit · show
-/veiculos/{v}/conjuntos
 /motoristas
 /viagens
 /viagens/importar-cte      → upload de XML/ZIP
@@ -947,7 +937,7 @@ RECEITA BRUTA
 
 // 1. Escopo
 //    período: [from, to] por competence_date
-//    veículo: vehicle_id OU composição (cavalo + carretas vigentes no período)
+//    veículo: vehicle_id (cavalo, carreta, truck... cada um é uma linha do DRE)
 
 // 2. Diretos — vehicle_id do lançamento bate com o escopo
 //    SELECT category.dre_group, category.id, SUM(amount_cents)
@@ -963,9 +953,6 @@ RECEITA BRUTA
 
 // 4. Rateio — categorias com allocation = 'apportioned'
 //    total do período ÷ frota, pelo critério configurado
-
-// 5. Composição — custos das carretas vigentes somam ao cavalo
-//    quando o modo é "conjunto"
 ```
 
 ### 9.3 Rateio
@@ -1004,10 +991,9 @@ Só entra se: acquisition_value_cents, depreciation_months preenchidos
 
 ### 9.5 Modos de visualização
 
-1. **Veículo individual** — um `vehicle_id`.
-2. **Conjunto** — cavalo + carretas vigentes no período. Este é o modo que o dono quer olhar: a carreta não gera receita sozinha, mas consome pneu e manutenção.
-3. **Comparativo da frota** — tabela, uma linha por veículo, colunas de indicadores, ordenável. **Esta é a tela que vende o produto:** ordenar por "Resultado líquido" e ver o veículo negativo.
-4. **Consolidado** — soma da empresa, batendo com o DRE gerencial.
+1. **Veículo individual** — um `vehicle_id` (cavalo, carreta ou truck). A carreta não gera receita sozinha, mas o custo de pneu e manutenção dela aparece na linha dela — sem conjunto vigente (ver ADR-006).
+2. **Comparativo da frota** — tabela, uma linha por veículo, colunas de indicadores, ordenável. **Esta é a tela que vende o produto:** ordenar por "Resultado líquido" e ver o veículo negativo.
+3. **Consolidado** — soma da empresa, batendo com o DRE gerencial.
 
 ### 9.6 Elemento de assinatura — cascata de resultado
 
@@ -1504,7 +1490,6 @@ Format::dateTime($dt);        // "14/03/2026 08:22"
 1 grupo cliente "Transportes Serra Azul" (Lavras/MG)
   └── 1 empresa com CNPJ válido
        ├── 4 veículos: 2 cavalos, 2 carretas (1 sider, 1 graneleiro)
-       ├── 2 composições vigentes
        ├── 3 motoristas (1 com CNH vencendo em 12 dias)
        ├── 3 contas (Caixa, Banco, Cartão)
        ├── plano de contas padrão
@@ -1535,7 +1520,7 @@ PHPUnit 12 (já no skeleton). Sem Pest — o skeleton veio com PHPUnit e trocar 
 | **CT-e** | Todas as fixtures da [seção 7.6](#76-testes-obrigatórios-do-parser) · reimport é idempotente · anulação cancela lançamento · substituto cancela referenciado · chave duplicada não duplica |
 | **Consumo** | Sequência com tanque parcial · sem full_tank anterior → null · arla não conta · odômetro regressivo bloqueia |
 | **Financeiro** | Saldo com previstos e realizados · transferência gera par · cancelar origem cancela lançamento · depreciação fora do fluxo de caixa · recálculo de saldo bate com cache |
-| **DRE** | Cada linha soma o esperado · rateio por km/receita/igual · **soma dos rateios == total** · veículo sem km não quebra · composição soma carretas · período sem dado retorna zerado, não erro |
+| **DRE** | Cada linha soma o esperado · rateio por km/receita/igual · **soma dos rateios == total** · veículo sem km não quebra · período sem dado retorna zerado, não erro |
 | **Rateio** | Maior resto: R$ 1.000,00 ÷ 3 = 33333+33333+33334 · ÷ 7 · ÷ 1 · ÷ 0 |
 | **Billing** | Trial expira → somente leitura · webhook duplicado processa uma vez · limite de plano bloqueia criação, não leitura · só o owner é notificado |
 | **Permissões** | Uma asserção por papel × recurso · impersonação não muta |
@@ -1577,9 +1562,9 @@ Cada fase é entregável e testável. Não iniciar a próxima com a anterior ver
 ### Fase 2 — Frota
 
 - [ ] Veículos: CRUD, chip de placa, validação de placa (antiga + Mercosul)
-- [ ] Composições com vigência
+- [ ] ~~Composições com vigência~~ — sem composição/engate no escopo (ADR-006)
 - [ ] Motoristas: CRUD, validação de CPF, alertas de CNH/MOPP/toxicológico
-- [ ] Vínculo motorista ↔ veículo
+- [ ] ~~Vínculo motorista ↔ veículo~~ — cadastros independentes, sem vínculo (ADR-006)
 - [ ] Fornecedores
 - [ ] Job diário de alertas de vencimento
 
@@ -1618,7 +1603,7 @@ Cada fase é entregável e testável. Não iniciar a próxima com a anterior ver
 
 - [ ] `DreBuilder` + `ApportionmentStrategy` (4 critérios)
 - [ ] Depreciação calculada
-- [ ] Modos: individual, conjunto, comparativo, consolidado
+- [ ] Modos: individual, comparativo, consolidado
 - [ ] Cards de indicadores
 - [ ] Cascata SVG
 - [ ] Drill-down por linha
@@ -1692,7 +1677,6 @@ Cada fase é entregável e testável. Não iniciar a próxima com a anterior ver
 | Empresa | `Company` |
 | Cavalo mecânico | `VehicleType::Tractor` |
 | Carreta / semirreboque | `VehicleType::SemiTrailer` |
-| Conjunto | `VehicleComposition` |
 | Motorista | `Driver` |
 | Viagem | `Trip` |
 | Abastecimento | `Fueling` |

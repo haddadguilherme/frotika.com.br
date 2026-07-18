@@ -13,7 +13,9 @@ final class ShowFuelingController
 {
     public function __invoke(int $fueling): View
     {
-        $model = Fueling::query()->with('vehicle:id,plate,type')->findOrFail($fueling);
+        $model = Fueling::query()
+            ->with(['vehicle:id,plate,type', 'driver:id,name', 'station:id,legal_name,trade_name'])
+            ->findOrFail($fueling);
 
         Gate::authorize('view', $model);
 

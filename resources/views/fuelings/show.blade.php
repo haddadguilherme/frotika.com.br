@@ -77,6 +77,16 @@
                     <dt class="text-2xs uppercase tracking-wide text-slate-400">Nota/cupom</dt>
                     <dd class="font-mono tabular text-slate-900">{{ $fueling->getAttribute('invoice_number') ?: '—' }}</dd>
                 </div>
+                <div class="col-span-2">
+                    <dt class="text-2xs uppercase tracking-wide text-slate-400">Motorista</dt>
+                    <dd class="text-slate-900">
+                        @if ($fueling->driver)
+                            <a href="{{ route('drivers.show', ['driver' => $fueling->driver->getKey()]) }}" class="font-medium text-brand-700 hover:text-brand-800">{{ $fueling->driver->getAttribute('name') }}</a>
+                        @else
+                            —
+                        @endif
+                    </dd>
+                </div>
             </dl>
         </div>
 
@@ -86,10 +96,15 @@
                 <div class="col-span-2">
                     <dt class="text-2xs uppercase tracking-wide text-slate-400">Posto</dt>
                     <dd class="text-slate-900">
-                        {{ collect([
-                            $fueling->getAttribute('station_name'),
-                            collect([$fueling->getAttribute('station_city'), $fueling->getAttribute('station_state')])->filter()->join('/'),
-                        ])->filter()->join(' · ') ?: '—' }}
+                        @if ($fueling->station)
+                            <a href="{{ route('partners.show', ['partner' => $fueling->station->getKey()]) }}" class="font-medium text-brand-700 hover:text-brand-800">{{ $fueling->station->getAttribute('trade_name') ?: $fueling->station->getAttribute('legal_name') }}</a>
+                            <span class="text-slate-400">· cadastrado</span>
+                        @else
+                            {{ collect([
+                                $fueling->getAttribute('station_name'),
+                                collect([$fueling->getAttribute('station_city'), $fueling->getAttribute('station_state')])->filter()->join('/'),
+                            ])->filter()->join(' · ') ?: '—' }}
+                        @endif
                     </dd>
                 </div>
 

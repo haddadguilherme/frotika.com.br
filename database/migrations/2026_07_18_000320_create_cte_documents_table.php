@@ -59,6 +59,8 @@ return new class extends Migration
 
             $table->foreignId('vehicle_id')->nullable()->constrained('vehicles')->nullOnDelete();
             $table->foreignId('trailer_vehicle_id')->nullable()->constrained('vehicles')->nullOnDelete();
+            $table->foreignId('driver_id')->nullable()->constrained('drivers')->nullOnDelete();
+            // Snapshot do XML: mantido mesmo com o vínculo, para auditoria da origem.
             $table->string('driver_name', 150)->nullable();
             $table->string('driver_cpf', 11)->nullable();
 

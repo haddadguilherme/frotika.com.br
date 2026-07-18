@@ -7,8 +7,10 @@ namespace Tests\Feature\Fuelings;
 use App\Domain\Finance\Actions\SeedDefaultFinancialCategories;
 use App\Domain\Finance\Models\BankAccount;
 use App\Domain\Finance\Models\FinancialEntry;
+use App\Domain\Fleet\Models\Driver;
 use App\Domain\Fleet\Models\Vehicle;
 use App\Domain\Fuelings\Models\Fueling;
+use App\Domain\Partners\Models\BusinessPartner;
 use App\Domain\Tenancy\Models\Company;
 use App\Domain\Tenancy\Models\Group;
 use App\Models\User;
@@ -190,6 +192,53 @@ final class FuelingManagementTest extends TestCase
         $this->actingAs($intruder)
             ->get(route('fuelings.show', ['fueling' => $fueling->getKey()]))
             ->assertNotFound();
+    }
+
+    public function test_abastecimento_vincula_motorista_e_posto_e_propaga_ao_lancamento(): void
+    {
+        [$owner, $company, $vehicle] = $this->scenario(9);
+
+        [$driverId, $stationId] = app(TenantContext::class)->runFor($company, function (): array {
+            $driver = Driver::query()->create([
+                'name' => 'José Motorista', 'cpf' => '52998224725', 'status' => 'active',
+            ]);
+            $station = BusinessPartner::query()->create([
+                'legal_name' => 'Posto Bom Preço LTDA', 'kind' => 'gas_station', 'active' => true,
+            ]);
+
+            return [(int) $driver->getKey(), (int) $station->getKey()];
+        });
+
+        $this->actingAs($owner)->post(route('fuelings.store'), $this->payload($vehicle, [
+            'odometer' => 20000, 'liters' => '100,000', 'total' => '600,00', 'payment_method' => 'invoice',
+            'driver_id' => $driverId, 'supplier_id' => $stationId,
+        ]))->assertRedirect();
+
+        $this->assertDatabaseHas('fuelings', [
+            'company_id' => $company->getKey(),
+            'driver_id' => $driverId,
+            'supplier_id' => $stationId,
+        ]);
+
+        // O vínculo de motorista chega ao lançamento financeiro (DRE por motorista).
+        $this->assertDatabaseHas('financial_entries', [
+            'sourceable_type' => Fueling::class,
+            'driver_id' => $driverId,
+        ]);
+    }
+
+    public function test_motorista_de_outra_empresa_e_bloqueado(): void
+    {
+        [$owner, $company, $vehicle] = $this->scenario(10);
+        [, $otherCompany] = $this->scenario(11);
+
+        $foreignDriverId = app(TenantContext::class)->runFor($otherCompany, fn (): int => (int) Driver::query()->create([
+            'name' => 'Motorista Alheio', 'cpf' => '11144477735', 'status' => 'active',
+        ])->getKey());
+
+        $this->actingAs($owner)->post(route('fuelings.store'), $this->payload($vehicle, [
+            'odometer' => 30000, 'driver_id' => $foreignDriverId,
+        ]))->assertSessionHasErrors('driver_id');
     }
 
     /**

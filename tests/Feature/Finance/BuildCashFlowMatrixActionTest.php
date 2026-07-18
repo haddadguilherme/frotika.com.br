@@ -8,6 +8,7 @@ use App\Domain\Finance\Actions\BuildCashFlowMatrix;
 use App\Domain\Finance\Models\BankAccount;
 use App\Domain\Finance\Models\FinancialCategory;
 use App\Domain\Finance\Models\FinancialEntry;
+use App\Domain\Fleet\Models\Vehicle;
 use App\Domain\Tenancy\Models\Company;
 use App\Domain\Tenancy\Models\Group;
 use App\Models\User;
@@ -102,12 +103,13 @@ final class BuildCashFlowMatrixActionTest extends TestCase
     {
         $company = $this->createCompany(1500);
         [$bankAccountId, $expenseCategoryId, $revenueCategoryId] = $this->createFinanceBase($company);
+        [$vehicleAId, $vehicleBId] = $this->createVehicles($company);
 
-        $this->createEntry($company, $bankAccountId, $expenseCategoryId, 'expense', 'settled', 100, '2026-07-09', null, 99);
-        $this->createEntry($company, $bankAccountId, $expenseCategoryId, 'expense', 'settled', 700, '2026-07-10', null, 99);
-        $this->createEntry($company, $bankAccountId, $revenueCategoryId, 'revenue', 'settled', 2000, '2026-07-11', null, 99);
-        $this->createEntry($company, $bankAccountId, $expenseCategoryId, 'expense', 'settled', 500, '2026-07-11', null, 88);
-        $this->createEntry($company, $bankAccountId, $expenseCategoryId, 'expense', 'forecast', 300, null, '2026-07-12', 99);
+        $this->createEntry($company, $bankAccountId, $expenseCategoryId, 'expense', 'settled', 100, '2026-07-09', null, $vehicleAId);
+        $this->createEntry($company, $bankAccountId, $expenseCategoryId, 'expense', 'settled', 700, '2026-07-10', null, $vehicleAId);
+        $this->createEntry($company, $bankAccountId, $revenueCategoryId, 'revenue', 'settled', 2000, '2026-07-11', null, $vehicleAId);
+        $this->createEntry($company, $bankAccountId, $expenseCategoryId, 'expense', 'settled', 500, '2026-07-11', null, $vehicleBId);
+        $this->createEntry($company, $bankAccountId, $expenseCategoryId, 'expense', 'forecast', 300, null, '2026-07-12', $vehicleAId);
 
         $action = app(BuildCashFlowMatrix::class);
 
@@ -118,7 +120,7 @@ final class BuildCashFlowMatrixActionTest extends TestCase
             true,
             [$bankAccountId],
             [$expenseCategoryId],
-            [99],
+            [$vehicleAId],
             ['settled'],
         );
 
@@ -126,7 +128,7 @@ final class BuildCashFlowMatrixActionTest extends TestCase
         $this->assertSame([
             'bank_account_ids' => [$bankAccountId],
             'financial_category_ids' => [$expenseCategoryId],
-            'vehicle_ids' => [99],
+            'vehicle_ids' => [$vehicleAId],
             'statuses' => ['settled'],
         ], $matrix['applied_filters']);
         $this->assertSame([
@@ -211,6 +213,25 @@ final class BuildCashFlowMatrixActionTest extends TestCase
             ]);
 
             return [$bankAccount->getKey(), $expenseCategory->getKey(), $revenueCategory->getKey()];
+        });
+    }
+
+    /**
+     * @return array{0: int, 1: int}
+     */
+    private function createVehicles(Company $company): array
+    {
+        $tenant = app(TenantContext::class);
+
+        return $tenant->runFor($company, function (): array {
+            $a = Vehicle::query()->create([
+                'plate' => 'CFA1A11', 'type' => 'tractor', 'status' => 'active', 'ownership' => 'own',
+            ]);
+            $b = Vehicle::query()->create([
+                'plate' => 'CFB2B22', 'type' => 'tractor', 'status' => 'active', 'ownership' => 'own',
+            ]);
+
+            return [(int) $a->getKey(), (int) $b->getKey()];
         });
     }
 

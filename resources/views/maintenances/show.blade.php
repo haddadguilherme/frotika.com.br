@@ -65,7 +65,13 @@
                 </div>
                 <div>
                     <dt class="text-2xs uppercase tracking-wide text-slate-400">Oficina</dt>
-                    <dd class="text-slate-900">{{ $maintenance->getAttribute('workshop_name') ?: '—' }}</dd>
+                    <dd class="text-slate-900">
+                        @if ($maintenance->supplier)
+                            <a href="{{ route('partners.show', ['partner' => $maintenance->supplier->getKey()]) }}" class="font-medium text-brand-700 hover:text-brand-800">{{ $maintenance->supplier->getAttribute('trade_name') ?: $maintenance->supplier->getAttribute('legal_name') }}</a>
+                        @else
+                            {{ $maintenance->getAttribute('workshop_name') ?: '—' }}
+                        @endif
+                    </dd>
                 </div>
                 <div>
                     <dt class="text-2xs uppercase tracking-wide text-slate-400">Horas paradas</dt>
