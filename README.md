@@ -1,58 +1,234 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Frotika
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Sistema de gestão para micro transportadoras com foco em resultado por veículo.
+O produto central é o DRE Veicular: a operação transforma eventos de viagem, abastecimento,
+manutenção e financeiro em visão de lucro por caminhão, competência e caixa.
 
-## About Laravel
+## Sumário
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- [Visão do Produto](#visão-do-produto)
+- [Fontes Canônicas](#fontes-canônicas)
+- [Stack e Requisitos](#stack-e-requisitos)
+- [Setup Rápido](#setup-rápido)
+- [Comandos de Desenvolvimento](#comandos-de-desenvolvimento)
+- [Arquitetura e Estrutura](#arquitetura-e-estrutura)
+- [Regras Invioláveis](#regras-invioláveis)
+- [Convenções de Código](#convenções-de-código)
+- [Fluxo de Trabalho](#fluxo-de-trabalho)
+- [Documentação Relacionada](#documentação-relacionada)
+- [Licença](#licença)
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Visão do Produto
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+O Frotika existe para responder duas perguntas com precisão:
 
-## Learning Laravel
+1. Estou lucrando por veículo? (DRE por competência)
+2. Tenho dinheiro no caixa? (fluxo por pagamento)
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+Para isso, o sistema separa claramente competência e pagamento, usa centavos inteiros para
+dinheiro e consolida números financeiros em uma única superfície de agregação.
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### Capacidades principais
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+- Gestão multiempresa com isolamento por tenant
+- Operação de frota (veículos, abastecimentos e manutenções)
+- Importação de CT-e e geração de lançamentos financeiros
+- DRE Veicular e fluxo de caixa com visão operacional
+- Plataforma administrativa para gestão do produto SaaS
 
-## Agentic Development
+## Fontes Canônicas
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+Antes de implementar qualquer módulo, leia as fontes abaixo nesta ordem:
+
+1. [AGENTS.md](AGENTS.md) (regra oficial de desenvolvimento e domínio)
+2. [docs/frotika-blueprint.md](docs/frotika-blueprint.md) (especificação funcional e técnica)
+3. [docs/adr](docs/adr) (decisões arquiteturais registradas)
+
+Este README é um guia operacional. Em caso de conflito, prevalecem AGENTS e blueprint.
+
+## Stack e Requisitos
+
+### Stack principal
+
+- PHP 8.3
+- Laravel 13.8
+- Livewire 4.3
+- Tailwind CSS v4
+- MySQL 8
+- PHPUnit 12
+
+### Requisitos locais
+
+- PHP 8.3 com extensões exigidas pelo Laravel
+- Composer 2
+- Node.js 20+ e npm
+- MySQL 8 disponível para a aplicação
+
+## Setup Rápido
+
+### 1) Instalação inicial
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+composer setup
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+Esse script executa:
 
-## Contributing
+- instalação de dependências PHP
+- criação de arquivo .env (se ausente)
+- geração da chave da aplicação
+- execução de migrações
+- instalação de dependências Node
+- build de assets de frontend
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### 2) Subir ambiente de desenvolvimento
 
-## Code of Conduct
+```bash
+composer dev
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Esse comando sobe, em paralelo:
 
-## Security Vulnerabilities
+- servidor HTTP da aplicação
+- worker de filas
+- painel de logs (pail)
+- websocket/realtime (reverb)
+- vite em modo de desenvolvimento
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## Comandos de Desenvolvimento
 
-## License
+Comandos principais do dia a dia:
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+```bash
+composer dev
+composer test
+vendor/bin/pint
+vendor/bin/phpstan analyse
+php artisan frotika:demo --fresh
+```
+
+Observações:
+
+- Scripts e variações ficam em [composer.json](composer.json)
+- Rode testes e formatação antes de concluir qualquer tarefa
+- Evite reset destrutivo de schema sem alinhamento prévio
+
+## Arquitetura e Estrutura
+
+O projeto usa organização por domínio para preservar regras de negócio próximas da implementação.
+
+```text
+app/
+	Domain/
+		Billing/
+		Finance/
+		Fleet/
+		Fuelings/
+		Maintenances/
+		Partners/
+		Tenancy/
+		Trips/
+	Livewire/
+	Platform/
+	Support/
+		Money/
+		Tenancy/
+database/
+	migrations/
+	factories/
+	seeders/
+docs/
+	adr/
+	development-log.md
+	frotika-blueprint.md
+resources/
+	css/
+	js/
+	views/
+tests/
+	Feature/
+	Unit/
+```
+
+### Princípios de arquitetura
+
+- Mutações de domínio devem passar por Actions
+- UI valida, chama Action e apresenta resultado
+- Relatórios financeiros agregam a partir de financial_entries
+- Contexto de tenant é obrigatório para escrita de dados multiempresa
+
+## Regras Invioláveis
+
+Resumo das regras que não podem ser quebradas:
+
+1. Dinheiro em centavos (bigInteger), sem float/decimal para totais monetários
+2. Rateio por maior resto para manter soma exata
+3. Models de empresa com trait de tenant obrigatória
+4. Remoção de scope de tenant apenas no módulo de plataforma
+5. Jobs com company_id explícito e execução em TenantContext
+6. Lançamento financeiro com competence_date e paid_at separados
+7. DRE e relatórios não somam direto de tabelas operacionais
+8. Consumo km/l apenas entre abastecimentos de tanque cheio
+9. Parser/importação de CT-e sempre validado contra fixtures reais
+10. Action de domínio sem teste não deve entrar em main
+
+Detalhes completos em [AGENTS.md](AGENTS.md).
+
+## Convenções de Código
+
+- declare(strict_types=1); em arquivos PHP
+- Código e enums em inglês
+- Interface e rotas voltadas ao usuário em pt-BR
+- Enums backed por string com método label() para exibição
+- Formatação de apresentação via utilitários de suporte (não formatar ad hoc na view)
+- Sem regra de negócio dentro de componentes de interface
+
+## Fluxo de Trabalho
+
+Processo recomendado para mudanças:
+
+1. Ler a seção relevante do blueprint
+2. Definir plano de implementação
+3. Implementar seguindo convenções do domínio
+4. Cobrir regras críticas com testes
+5. Rodar validações locais
+6. Registrar decisão arquitetural quando necessário
+
+Checklist mínimo antes de concluir:
+
+```bash
+composer test
+vendor/bin/pint
+vendor/bin/phpstan analyse
+```
+
+## Documentação Relacionada
+
+- Especificação completa: [docs/frotika-blueprint.md](docs/frotika-blueprint.md)
+- Diário de evolução: [docs/development-log.md](docs/development-log.md)
+- Decisões arquiteturais: [docs/adr](docs/adr)
+- Guia de agentes: [docs/agentes.md](docs/agentes.md)
+
+### ADRs disponíveis
+
+- [docs/adr/001-mysql.md](docs/adr/001-mysql.md)
+- [docs/adr/002-painel-plataforma-e-cobranca.md](docs/adr/002-painel-plataforma-e-cobranca.md)
+- [docs/adr/003-licenca-por-grupo-e-cadastro-de-empresas.md](docs/adr/003-licenca-por-grupo-e-cadastro-de-empresas.md)
+- [docs/adr/004-importacao-de-cte-e-parceiros.md](docs/adr/004-importacao-de-cte-e-parceiros.md)
+- [docs/adr/005-cte-como-viagem-sem-entidade-trip.md](docs/adr/005-cte-como-viagem-sem-entidade-trip.md)
+- [docs/adr/006-sem-composicao-de-veiculos-nem-vinculo-motorista-veiculo.md](docs/adr/006-sem-composicao-de-veiculos-nem-vinculo-motorista-veiculo.md)
+- [docs/adr/007-observabilidade-filas-e-websocket.md](docs/adr/007-observabilidade-filas-e-websocket.md)
+
+## Suporte Operacional
+
+Quando uma tarefa envolver regra de negócio de dinheiro, tenancy, DRE ou CT-e, consulte primeiro:
+
+1. [AGENTS.md](AGENTS.md)
+2. [docs/frotika-blueprint.md](docs/frotika-blueprint.md)
+3. ADR correspondente em [docs/adr](docs/adr)
+
+Em caso de decisão ainda não formalizada, registre um novo ADR em docs/adr.
+
+## Licença
+
+Projeto licenciado sob MIT.
