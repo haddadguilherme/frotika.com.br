@@ -61,7 +61,7 @@ final class RegisterOwnerAndCompanyActionTest extends TestCase
             'district' => 'Bela Vista',
             'city' => 'Sao Paulo',
             'state' => 'SP',
-            'phone' => '(11) 99999-0000',
+            'phone' => '11999990000',
             'email' => 'contato@serraazul.com.br',
         ]);
     }
@@ -229,7 +229,7 @@ final class RegisterOwnerAndCompanyActionTest extends TestCase
             companyDistrict: 'Bela Vista',
             companyCity: 'Sao Paulo',
             companyState: 'SP',
-            companyPhone: '(11) 99999-0000',
+            companyPhone: '11999990000',
             companyEmail: 'contato@serraazul.com.br',
         ));
 
@@ -259,7 +259,7 @@ final class RegisterOwnerAndCompanyActionTest extends TestCase
             'district' => 'Bela Vista',
             'city' => 'Sao Paulo',
             'state' => 'SP',
-            'phone' => '(11) 99999-0000',
+            'phone' => '11999990000',
             'email' => 'contato@serraazul.com.br',
         ]);
 

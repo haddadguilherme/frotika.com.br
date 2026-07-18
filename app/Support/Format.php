@@ -85,6 +85,38 @@ final class Format
         return mb_strtoupper(trim($value));
     }
 
+    /**
+     * Telefone/celular/WhatsApp a partir dos dígitos gravados na base.
+     * Celular (11 dígitos) vira (xx) x xxxx-xxxx; fixo (10 dígitos) vira
+     * (xx) xxxx-xxxx. Outros tamanhos (dado incompleto ou legado) voltam só
+     * com os dígitos — nunca inventa separador em cima de número torto.
+     */
+    public static function phone(?string $value): string
+    {
+        $digits = preg_replace('/\D+/', '', (string) $value) ?? '';
+
+        if (strlen($digits) === 11) {
+            return sprintf(
+                '(%s) %s %s-%s',
+                substr($digits, 0, 2),
+                substr($digits, 2, 1),
+                substr($digits, 3, 4),
+                substr($digits, 7, 4),
+            );
+        }
+
+        if (strlen($digits) === 10) {
+            return sprintf(
+                '(%s) %s-%s',
+                substr($digits, 0, 2),
+                substr($digits, 2, 4),
+                substr($digits, 6, 4),
+            );
+        }
+
+        return $digits;
+    }
+
     public static function cnpj(string $value): string
     {
         return Cnpj::format($value);

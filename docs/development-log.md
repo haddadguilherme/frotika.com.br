@@ -316,3 +316,33 @@ Ver ADR-003.
 - `vendor/bin/pint`
 - `vendor/bin/phpstan analyse`
 - `composer test`
+
+## 2026-07-18 - Etapa 0.16 (consulta de CEP no ViaCEP)
+
+### Entregas da etapa 0.16
+
+- **Modulo `app/Support/Cep`** espelhando o de CNPJ: `Cep` (digits/format/isValid de 8 digitos, sem digito verificador), `CepData` (DTO readonly com `isGeneric()` e `toFormPayload()`), `CepLookupStatus` (Found/NotFound/Unavailable com `label()`), `CepLookupResult` e `CepLookup` (GET `https://viacep.com.br/ws/{cep}/json/`, timeout 10s). `{"erro": true}` -> NotFound; falha de rede/HTTP -> Unavailable.
+- **`LookupCepController`** invocavel: valida o formato (8 digitos) e retorna `422 invalid` antes de chamar a API; senao devolve `{status, generic, address}`. Rota `GET /empresas/cep/{cep}` (`companies.cep`, `whereNumber`, `throttle:30,1`) dentro do grupo autenticado.
+- **Formulario de empresas (`companies/_form.blade.php`)**: CEP virou campo com botao "Buscar" + status; ao completar 8 digitos consulta o ViaCEP e preenche o endereco. Regra do CEP generico: quando o ViaCEP nao devolve logradouro/bairro (CEP da cidade toda), cidade/UF ficam preenchidas e bloqueadas e logradouro/bairro ficam **liberados** para digitacao; num CEP especifico, logradouro/bairro/cidade/UF ficam preenchidos e **bloqueados** (numero e complemento sempre editaveis). Nao encontrado/indisponivel/invalido libera todos os campos para preenchimento manual.
+- **`ibge_code` passa a ser persistido** (coluna ja existia, antes vazia): campo hidden no form preenchido pelo ViaCEP, mais `CompanyData::$ibgeCode`, regra `size:7` no `StoreCompanyRequest` e repasse nos controllers Create/Update.
+
+### Validacoes da etapa 0.16
+
+- `vendor/bin/pint`
+- `vendor/bin/phpstan analyse --memory-limit=512M` (0 erros, nivel 6)
+- `composer test` (126 testes)
+
+## 2026-07-18 - Etapa 0.17 (mascara de telefone/celular/WhatsApp)
+
+### Entregas da etapa 0.17
+
+- **Mascara global no `resources/js/app.js`**: qualquer input com `data-mask="phone"` recebe `(xx) x xxxx-xxxx` (celular, 11 digitos) ou `(xx) xxxx-xxxx` (fixo, 10 digitos), limitado a 11 digitos na digitacao. Formata tambem no load (edicao/valor antigo) e expoe `window.frotikaApplyPhoneMask`. Vale para todos os cadastros, atuais e futuros.
+- **`Format::phone(?string)`** para exibicao/impressao a partir dos digitos gravados. Tamanho inesperado volta so com os digitos (nunca inventa separador). Usado no `companies/show.blade.php`.
+- **Base guarda so digitos**: `StoreCompanyRequest` e `RegisterOwnerAndCompanyRequest` normalizam o telefone para digitos (`nullableDigits`) e validam `regex:/^\d{10,11}$/`. O input do formulario de empresas ganhou `data-mask="phone"`, `maxlength`, `inputmode="tel"`; o autofill do CNPJ dispara o `input` para a mascara formatar o telefone vindo cru da Receita.
+
+### Validacoes da etapa 0.17
+
+- `vendor/bin/pint`
+- `vendor/bin/phpstan analyse --memory-limit=512M` (0 erros, nivel 6)
+- `composer test` (129 testes)
+- `npm run build`

@@ -46,7 +46,8 @@ class StoreCompanyRequest extends FormRequest
             'district' => ['nullable', 'string', 'max:80'],
             'city' => ['nullable', 'string', 'max:80'],
             'state' => ['nullable', 'string', 'size:2'],
-            'phone' => ['nullable', 'string', 'max:20'],
+            'ibge_code' => ['nullable', 'string', 'size:7'],
+            'phone' => ['nullable', 'string', 'regex:/^\d{10,11}$/'],
             'email' => ['nullable', 'email', 'max:150'],
         ];
     }
@@ -61,6 +62,7 @@ class StoreCompanyRequest extends FormRequest
             'cnpj.size' => 'O CNPJ deve ter 14 dígitos.',
             'cnpj.unique' => 'Este CNPJ já está cadastrado.',
             'tax_regime.in' => 'Regime tributário inválido.',
+            'phone.regex' => 'Informe um telefone com DDD (10 ou 11 dígitos).',
             'email.email' => 'Informe um e-mail válido.',
         ];
     }
@@ -84,6 +86,7 @@ class StoreCompanyRequest extends FormRequest
             'district' => 'bairro',
             'city' => 'cidade',
             'state' => 'UF',
+            'ibge_code' => 'código IBGE',
             'phone' => 'telefone',
             'email' => 'e-mail',
         ];
@@ -105,7 +108,8 @@ class StoreCompanyRequest extends FormRequest
             'district' => $this->nullableTrimmed('district'),
             'city' => $this->nullableTrimmed('city'),
             'state' => $this->nullableUpper('state'),
-            'phone' => $this->nullableTrimmed('phone'),
+            'ibge_code' => $this->nullableTrimmed('ibge_code'),
+            'phone' => $this->nullableDigits('phone'),
             'email' => $this->nullableLower('email'),
         ]);
     }
@@ -115,6 +119,13 @@ class StoreCompanyRequest extends FormRequest
         $value = trim((string) $this->input($key, ''));
 
         return $value === '' ? null : $value;
+    }
+
+    protected function nullableDigits(string $key): ?string
+    {
+        $digits = preg_replace('/\D+/', '', (string) $this->input($key, '')) ?? '';
+
+        return $digits === '' ? null : $digits;
     }
 
     protected function nullableLower(string $key): ?string

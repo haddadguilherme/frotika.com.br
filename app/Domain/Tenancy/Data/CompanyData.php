@@ -20,6 +20,7 @@ final readonly class CompanyData
         public ?string $district = null,
         public ?string $city = null,
         public ?string $state = null,
+        public ?string $ibgeCode = null,
         public ?string $phone = null,
         public ?string $email = null,
     ) {}
@@ -43,6 +44,7 @@ final readonly class CompanyData
             'district' => $this->district,
             'city' => $this->city,
             'state' => $this->state,
+            'ibge_code' => $this->ibgeCode,
             'phone' => $this->phone,
             'email' => $this->email,
         ];

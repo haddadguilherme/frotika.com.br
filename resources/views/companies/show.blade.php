@@ -74,7 +74,7 @@
                 </div>
                 <div class="flex justify-between gap-4 px-4 py-2.5">
                     <dt class="text-slate-500">Telefone</dt>
-                    <dd class="font-mono tabular text-slate-900">{{ $company->getAttribute('phone') ?: '—' }}</dd>
+                    <dd class="font-mono tabular text-slate-900">{{ $company->getAttribute('phone') ? Format::phone($company->getAttribute('phone')) : '—' }}</dd>
                 </div>
                 <div class="flex justify-between gap-4 px-4 py-2.5">
                     <dt class="text-slate-500">E-mail</dt>

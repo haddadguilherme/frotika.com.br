@@ -37,6 +37,7 @@ final class UpdateCompanyController
             district: $validated['district'] ?? null,
             city: $validated['city'] ?? null,
             state: $validated['state'] ?? null,
+            ibgeCode: $validated['ibge_code'] ?? null,
             phone: $validated['phone'] ?? null,
             email: $validated['email'] ?? null,
         ));

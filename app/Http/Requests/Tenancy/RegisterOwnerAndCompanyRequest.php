@@ -48,7 +48,7 @@ final class RegisterOwnerAndCompanyRequest extends FormRequest
             'company_district' => ['nullable', 'string', 'max:80'],
             'company_city' => ['nullable', 'string', 'max:80'],
             'company_state' => ['nullable', 'string', 'size:2'],
-            'company_phone' => ['nullable', 'string', 'max:20'],
+            'company_phone' => ['nullable', 'string', 'regex:/^\d{10,11}$/'],
             'company_email' => ['nullable', 'email', 'max:150'],
         ];
     }
@@ -66,6 +66,7 @@ final class RegisterOwnerAndCompanyRequest extends FormRequest
             'company_cnpj.size' => 'O CNPJ da empresa deve ter 14 digitos.',
             'company_cnpj.unique' => 'Este CNPJ ja esta cadastrado.',
             'tax_regime.in' => 'Regime tributario invalido.',
+            'company_phone.regex' => 'Informe um telefone com DDD (10 ou 11 digitos).',
         ];
     }
 
@@ -110,7 +111,7 @@ final class RegisterOwnerAndCompanyRequest extends FormRequest
             'company_district' => $this->nullableTrimmed('company_district'),
             'company_city' => $this->nullableTrimmed('company_city'),
             'company_state' => $this->nullableUpper('company_state'),
-            'company_phone' => $this->nullableTrimmed('company_phone'),
+            'company_phone' => $this->nullableDigits('company_phone'),
             'company_email' => $this->nullableLower('company_email'),
         ]);
     }
@@ -120,6 +121,13 @@ final class RegisterOwnerAndCompanyRequest extends FormRequest
         $value = trim((string) $this->input($key, ''));
 
         return $value === '' ? null : $value;
+    }
+
+    private function nullableDigits(string $key): ?string
+    {
+        $digits = preg_replace('/\D+/', '', (string) $this->input($key, '')) ?? '';
+
+        return $digits === '' ? null : $digits;
     }
 
     private function nullableLower(string $key): ?string

@@ -61,6 +61,23 @@ final class FormatTest extends TestCase
         $this->assertSame('123.456.789-00', Format::cpf('12345678900'));
     }
 
+    public function test_phone_celular_com_onze_digitos(): void
+    {
+        $this->assertSame('(11) 9 8765-4321', Format::phone('11987654321'));
+        $this->assertSame('(11) 9 8765-4321', Format::phone('(11) 9 8765-4321'));
+    }
+
+    public function test_phone_fixo_com_dez_digitos(): void
+    {
+        $this->assertSame('(11) 3456-7890', Format::phone('1134567890'));
+    }
+
+    public function test_phone_tamanho_inesperado_volta_so_digitos(): void
+    {
+        $this->assertSame('123', Format::phone('123'));
+        $this->assertSame('', Format::phone(null));
+    }
+
     public function test_cte_key_em_blocos_de_quatro(): void
     {
         $key = str_repeat('1234', 11);

@@ -15,6 +15,7 @@ use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\Tenancy\CreateCompanyController;
 use App\Http\Controllers\Tenancy\DeactivateCompanyController;
 use App\Http\Controllers\Tenancy\ListCompaniesController;
+use App\Http\Controllers\Tenancy\LookupCepController;
 use App\Http\Controllers\Tenancy\LookupCnpjController;
 use App\Http\Controllers\Tenancy\RegisterOwnerAndCompanyController;
 use App\Http\Controllers\Tenancy\ShowCompanyController;
@@ -69,6 +70,10 @@ Route::middleware('auth')->group(function (): void {
             ->whereNumber('cnpj')
             ->middleware('throttle:20,1')
             ->name('companies.cnpj');
+        Route::get('/empresas/cep/{cep}', LookupCepController::class)
+            ->whereNumber('cep')
+            ->middleware('throttle:30,1')
+            ->name('companies.cep');
         Route::get('/empresas/{company}', ShowCompanyController::class)
             ->whereNumber('company')
             ->name('companies.show');
