@@ -16,6 +16,7 @@ use App\Domain\Partners\Models\BusinessPartner;
 use App\Domain\Tenancy\Models\Company;
 use App\Domain\Tenancy\Models\Group;
 use App\Domain\Trips\Models\CteDocument;
+use App\Domain\Trips\Models\CteImportBatch;
 use App\Models\User;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -45,10 +46,12 @@ final class ImportCteTest extends TestCase
 
         $response = $this
             ->actingAs($owner)
-            ->post(route('cte.import.store'), ['xml' => $this->upload()]);
+            ->post(route('cte.import.store'), ['xmls' => [$this->upload()]]);
+
+        $batch = CteImportBatch::withoutGlobalScopes()->firstOrFail();
+        $response->assertRedirect(route('cte.import.result', ['batch' => $batch->getAttribute('uuid')]));
 
         $cte = CteDocument::withoutGlobalScopes()->firstOrFail();
-        $response->assertRedirect(route('cte.show', ['cte' => $cte->getKey()]));
 
         $this->assertDatabaseCount('cte_documents', 1);
         $this->assertSame('52260717624719000520570050000167601000167600', $cte->getAttribute('access_key'));
@@ -91,7 +94,7 @@ final class ImportCteTest extends TestCase
         Storage::fake('local');
         [$owner, $company] = $this->createOwnerWithCompany();
 
-        $this->actingAs($owner)->post(route('cte.import.store'), ['xml' => $this->upload()])->assertRedirect();
+        $this->actingAs($owner)->post(route('cte.import.store'), ['xmls' => [$this->upload()]])->assertRedirect();
 
         // Motorista provisionado pelo CPF do XML (deduplicado por CPF).
         $this->assertDatabaseHas('drivers', [
@@ -128,7 +131,7 @@ final class ImportCteTest extends TestCase
 
         $this
             ->actingAs($owner)
-            ->post(route('cte.import.store'), ['xml' => $this->upload()])
+            ->post(route('cte.import.store'), ['xmls' => [$this->upload()]])
             ->assertRedirect();
 
         $cte = CteDocument::withoutGlobalScopes()->firstOrFail();
@@ -144,8 +147,8 @@ final class ImportCteTest extends TestCase
         Storage::fake('local');
         [$owner, $company] = $this->createOwnerWithCompany();
 
-        $this->actingAs($owner)->post(route('cte.import.store'), ['xml' => $this->upload()]);
-        $this->actingAs($owner)->post(route('cte.import.store'), ['xml' => $this->upload()]);
+        $this->actingAs($owner)->post(route('cte.import.store'), ['xmls' => [$this->upload()]]);
+        $this->actingAs($owner)->post(route('cte.import.store'), ['xmls' => [$this->upload()]]);
 
         $this->assertDatabaseCount('cte_documents', 1);
         $this->assertDatabaseCount('financial_entries', 1);
@@ -158,7 +161,7 @@ final class ImportCteTest extends TestCase
         Storage::fake('local');
         [$owner, $company] = $this->createOwnerWithCompany();
 
-        $this->actingAs($owner)->post(route('cte.import.store'), ['xml' => $this->upload()]);
+        $this->actingAs($owner)->post(route('cte.import.store'), ['xmls' => [$this->upload()]]);
 
         app(TenantContext::class)->runFor($company, function (): void {
             CteDocument::query()->firstOrFail()->delete();
@@ -176,7 +179,7 @@ final class ImportCteTest extends TestCase
 
         $this
             ->actingAs($owner)
-            ->post(route('cte.import.store'), ['xml' => $this->upload()])
+            ->post(route('cte.import.store'), ['xmls' => [$this->upload()]])
             ->assertRedirect();
 
         // O sincronizador semeou o plano de contas e lançou a receita mesmo assim.

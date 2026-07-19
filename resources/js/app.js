@@ -66,3 +66,6 @@ window.frotikaApplyPhoneMask = applyPhoneMask;
  */
 
 import './echo';
+import './toast';
+import './notifications';
+import './cte-import';

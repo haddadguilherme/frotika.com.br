@@ -4,6 +4,9 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    @auth
+        <meta name="user-id" content="{{ auth()->id() }}" />
+    @endauth
     <title>@yield('title', 'Painel | Frotika')</title>
     <link rel="icon" type="image/png" href="{{ asset('icone-frotika.png') }}" />
     <link rel="apple-touch-icon" href="{{ asset('icone-frotika.png') }}" />

@@ -81,6 +81,7 @@ use App\Http\Controllers\Tenancy\SwitchCurrentCompanyController;
 use App\Http\Controllers\Tenancy\UpdateCompanyController;
 use App\Http\Controllers\Trips\ListCteController;
 use App\Http\Controllers\Trips\ShowCteController;
+use App\Http\Controllers\Trips\ShowCteImportResultController;
 use App\Http\Controllers\Trips\ShowImportCteController;
 use App\Http\Controllers\Trips\StoreCteImportController;
 use App\Http\Middleware\EnsureGroupLicenseAllowsWrite;
@@ -277,6 +278,7 @@ Route::middleware('auth')->group(function (): void {
         Route::get('/ct-e', ListCteController::class)->name('cte.index');
         Route::get('/ct-e/importar', ShowImportCteController::class)->name('cte.import');
         Route::post('/ct-e/importar', StoreCteImportController::class)->name('cte.import.store');
+        Route::get('/ct-e/importacoes/{batch}', ShowCteImportResultController::class)->name('cte.import.result');
         Route::get('/ct-e/{cte}', ShowCteController::class)
             ->whereNumber('cte')
             ->name('cte.show');
