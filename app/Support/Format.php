@@ -80,6 +80,22 @@ final class Format
         return number_format((float) $value, $decimals, ',', '.').'%';
     }
 
+    /**
+     * Peso em kg. Sem casas quando inteiro; até 3 casas (grama) quando há
+     * fração. Null vira travessão — dado ausente nunca é zero.
+     */
+    public static function weight(float|int|null $value): string
+    {
+        if ($value === null) {
+            return self::MINUS;
+        }
+
+        $value = (float) $value;
+        $decimals = fmod($value, 1.0) === 0.0 ? 0 : 3;
+
+        return number_format($value, $decimals, ',', '.').' kg';
+    }
+
     public static function plate(string $value): string
     {
         return mb_strtoupper(trim($value));
