@@ -12,6 +12,7 @@ use App\Http\Controllers\Auth\ShowLoginController;
 use App\Http\Controllers\Auth\ShowResetPasswordController;
 use App\Http\Controllers\Auth\ShowVerifyEmailController;
 use App\Http\Controllers\Auth\VerifyEmailController;
+use App\Http\Controllers\Dashboard\ShowDashboardController;
 use App\Http\Controllers\Finance\CancelFinancialEntryController;
 use App\Http\Controllers\Finance\DeactivateBankAccountController;
 use App\Http\Controllers\Finance\ListBankAccountsController;
@@ -125,7 +126,7 @@ Route::middleware('auth')->group(function (): void {
         ->name('verification.verify');
 
     Route::middleware(['verified', EnsureGroupLicenseAllowsWrite::class])->group(function (): void {
-        Route::view('/painel', 'dashboard')->name('dashboard');
+        Route::get('/painel', ShowDashboardController::class)->name('dashboard');
         Route::post('/empresa-atual', SwitchCurrentCompanyController::class)->name('tenancy.switch-company');
 
         Route::get('/empresas', ListCompaniesController::class)->name('companies.index');
