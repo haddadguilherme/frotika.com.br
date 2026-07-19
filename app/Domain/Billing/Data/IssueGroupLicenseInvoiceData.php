@@ -15,5 +15,7 @@ final readonly class IssueGroupLicenseInvoiceData
         public ?string $boletoNumber = null,
         public ?string $boletoUrl = null,
         public ?string $boletoPdfUrl = null,
+        public ?string $boletoFilePath = null,
+        public ?string $boletoFileOriginalName = null,
     ) {}
 }

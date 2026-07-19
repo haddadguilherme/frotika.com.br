@@ -10,6 +10,7 @@ use App\Domain\Billing\Enums\GroupLicenseStatus;
 use App\Domain\Billing\Models\GroupLicense;
 use App\Domain\Billing\Models\GroupLicenseInvoice;
 use App\Models\User;
+use App\Notifications\Billing\GroupLicenseInvoiceIssuedNotification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
@@ -51,6 +52,8 @@ final class IssueGroupLicenseInvoice
                 'boleto_number' => $data->boletoNumber,
                 'boleto_url' => $data->boletoUrl,
                 'boleto_pdf_url' => $data->boletoPdfUrl,
+                'boleto_file_path' => $data->boletoFilePath,
+                'boleto_file_original_name' => $data->boletoFileOriginalName,
                 'created_by_user_id' => $actor->getKey(),
             ]);
 
@@ -61,6 +64,14 @@ final class IssueGroupLicenseInvoice
 
             return $invoice;
         });
+
+        $invoice->loadMissing(['group.owner']);
+
+        $owner = $invoice->group?->owner;
+
+        if ($owner instanceof User && trim((string) $owner->email) !== '') {
+            $owner->notify(new GroupLicenseInvoiceIssuedNotification($invoice));
+        }
 
         return $invoice;
     }

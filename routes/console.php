@@ -1,5 +1,7 @@
 <?php
 
+use App\Domain\Billing\Enums\GroupLicenseInvoiceStatus;
+use App\Domain\Billing\Models\GroupLicenseInvoice;
 use App\Domain\Finance\Actions\GenerateForecastEntriesFromRecurrences;
 use App\Domain\Finance\Actions\RecalculateBankAccountCurrentBalance;
 use App\Domain\Finance\Enums\FinancialEntryStatus;
@@ -10,6 +12,7 @@ use App\Domain\Tenancy\Models\Company;
 use App\Models\User;
 use App\Notifications\Auth\ResetPasswordNotification;
 use App\Notifications\Auth\VerifyEmailNotification;
+use App\Notifications\Billing\GroupLicenseInvoiceDueTodayNotification;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Console\Command;
 use Illuminate\Foundation\Inspiring;
@@ -190,12 +193,59 @@ Artisan::command('frotika:mail-preview {--to=}', function (): int {
     return Command::SUCCESS;
 })->purpose('Envia todos os e-mails do sistema (branded) para avaliacao no MailHog');
 
+Artisan::command('frotika:notify-group-license-due-today', function (): int {
+    $today = now()->toDateString();
+
+    $invoices = GroupLicenseInvoice::query()
+        ->with(['group.owner'])
+        ->whereDate('due_date', $today)
+        ->whereIn('status', [
+            GroupLicenseInvoiceStatus::Pending->value,
+            GroupLicenseInvoiceStatus::Overdue->value,
+        ])
+        ->get();
+
+    if ($invoices->isEmpty()) {
+        $this->info('Nenhum boleto pendente vencendo hoje para notificar.');
+
+        return Command::SUCCESS;
+    }
+
+    $sent = 0;
+    $skipped = 0;
+
+    foreach ($invoices as $invoice) {
+        $owner = $invoice->group?->owner;
+
+        if (! $owner instanceof User || trim((string) $owner->email) === '') {
+            $skipped++;
+
+            continue;
+        }
+
+        $owner->notify(new GroupLicenseInvoiceDueTodayNotification($invoice));
+        $sent++;
+    }
+
+    $this->info(sprintf(
+        'Notificacoes de vencimento enviadas: %d, sem destinatario: %d.',
+        $sent,
+        $skipped,
+    ));
+
+    return Command::SUCCESS;
+})->purpose('Envia e-mail no dia do vencimento para boletos de licenca ainda nao pagos');
+
 Schedule::command('frotika:generate-recurrences')
     ->monthlyOn(1, '01:30')
     ->withoutOverlapping();
 
 Schedule::command('frotika:recalculate-balances')
     ->dailyAt('02:00')
+    ->withoutOverlapping();
+
+Schedule::command('frotika:notify-group-license-due-today')
+    ->dailyAt('08:00')
     ->withoutOverlapping();
 
 Schedule::command('backup:run --only-db')

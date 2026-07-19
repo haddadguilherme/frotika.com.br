@@ -12,7 +12,12 @@ use App\Domain\Tenancy\Enums\GroupType;
 use App\Domain\Tenancy\Models\Company;
 use App\Domain\Tenancy\Models\Group;
 use App\Models\User;
+use App\Notifications\Billing\GroupLicenseInvoiceDueTodayNotification;
+use App\Notifications\Billing\GroupLicenseInvoiceIssuedNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -49,6 +54,7 @@ final class PlatformBillingTest extends TestCase
 
     public function test_usuario_comum_nao_acessa_o_painel_da_plataforma(): void
     {
+        /** @var User $user */
         $user = User::factory()->create(['is_platform_admin' => false]);
 
         $response = $this
@@ -60,30 +66,53 @@ final class PlatformBillingTest extends TestCase
 
     public function test_admin_da_plataforma_lanca_boleto_manual_para_licenca_de_um_cliente(): void
     {
+        Notification::fake();
+        Storage::fake('local');
+
         $admin = $this->createPlatformAdmin();
         [$group, , $license] = $this->createCustomerScenario();
+        /** @var User $owner */
+        $owner = $group->owner()->firstOrFail();
+
+        $boletoFile = UploadedFile::fake()->create('boleto-julho.pdf', 128, 'application/pdf');
 
         $response = $this
             ->actingAs($admin)
             ->post(route('platform.licenses.issue', ['license' => $license->getKey()]), [
-                'amount_cents' => 12990,
+                'amount_reais' => '129,90',
                 'due_date' => now()->addDays(3)->toDateString(),
                 'reference_month' => now()->format('Y-m'),
                 'boleto_number' => '34191.79001 01043.510047 91020.150008 9 99990000012990',
-                'boleto_url' => 'https://pagamentos.exemplo.com/boleto/12990',
-                'boleto_pdf_url' => 'https://pagamentos.exemplo.com/boleto/12990.pdf',
+                'boleto_file' => $boletoFile,
             ]);
 
         $response->assertRedirect(route('platform.groups.show', ['group' => $group->getKey()]));
         $response->assertSessionHas('status', 'Boleto lançado com sucesso para o grupo.');
 
-        $this->assertDatabaseHas('group_license_invoices', [
-            'group_license_id' => $license->getKey(),
-            'group_id' => $group->getKey(),
-            'amount_cents' => 12990,
-            'status' => GroupLicenseInvoiceStatus::Pending->value,
-            'created_by_user_id' => $admin->getKey(),
-        ]);
+        $invoice = GroupLicenseInvoice::query()
+            ->where('group_license_id', $license->getKey())
+            ->firstOrFail();
+
+        $this->assertSame($group->getKey(), (int) $invoice->getAttribute('group_id'));
+        $this->assertSame(12990, (int) $invoice->getAttribute('amount_cents'));
+        $this->assertSame(GroupLicenseInvoiceStatus::Pending, $invoice->status);
+        $this->assertSame($admin->getKey(), (int) $invoice->getAttribute('created_by_user_id'));
+
+        $storedBoletoPath = $invoice->getAttribute('boleto_file_path');
+        $this->assertIsString($storedBoletoPath);
+        $this->assertNotSame('', $storedBoletoPath);
+        $this->assertTrue(Storage::disk('local')->exists($storedBoletoPath));
+
+        Notification::assertSentTo(
+            $owner,
+            GroupLicenseInvoiceIssuedNotification::class,
+            function (GroupLicenseInvoiceIssuedNotification $notification) use ($owner): bool {
+                $mail = $notification->toMail($owner);
+
+                return str_contains($mail->subject, 'Novo boleto da licença do grupo')
+                    && count($mail->attachments) === 1;
+            }
+        );
 
         $this->assertDatabaseHas('group_licenses', [
             'id' => $license->getKey(),
@@ -100,7 +129,7 @@ final class PlatformBillingTest extends TestCase
             ->actingAs($admin)
             ->from(route('platform.groups.show', ['group' => $group->getKey()]))
             ->post(route('platform.licenses.issue', ['license' => $license->getKey()]), [
-                'amount_cents' => 9900,
+                'amount_reais' => '99,00',
                 'due_date' => now()->addDays(2)->toDateString(),
             ]);
 
@@ -154,18 +183,75 @@ final class PlatformBillingTest extends TestCase
 
     public function test_usuario_comum_nao_consegue_lancar_boleto(): void
     {
+        /** @var User $user */
         $user = User::factory()->create(['is_platform_admin' => false]);
         [, , $license] = $this->createCustomerScenario();
 
         $response = $this
             ->actingAs($user)
             ->post(route('platform.licenses.issue', ['license' => $license->getKey()]), [
-                'amount_cents' => 9900,
+                'amount_reais' => '99,00',
                 'due_date' => now()->addDays(2)->toDateString(),
             ]);
 
         $response->assertForbidden();
         $this->assertDatabaseCount('group_license_invoices', 0);
+    }
+
+    public function test_comando_notifica_owner_no_dia_do_vencimento_quando_boleto_ainda_nao_foi_pago(): void
+    {
+        Notification::fake();
+
+        [, , $license] = $this->createCustomerScenario();
+        $invoice = GroupLicenseInvoice::query()->create([
+            'group_license_id' => $license->getKey(),
+            'group_id' => $license->getAttribute('group_id'),
+            'reference_month' => now()->startOfMonth()->toDateString(),
+            'amount_cents' => 9900,
+            'due_date' => now()->toDateString(),
+            'status' => GroupLicenseInvoiceStatus::Pending,
+        ]);
+
+        /** @var User $owner */
+        $owner = $invoice->group()->firstOrFail()->owner()->firstOrFail();
+
+        $this->artisan('frotika:notify-group-license-due-today')
+            ->expectsOutputToContain('Notificacoes de vencimento enviadas')
+            ->assertSuccessful();
+
+        Notification::assertSentTo(
+            $owner,
+            GroupLicenseInvoiceDueTodayNotification::class,
+            fn (GroupLicenseInvoiceDueTodayNotification $notification): bool => str_contains(
+                $notification->toMail($owner)->subject,
+                'Boleto da licença vence hoje'
+            )
+        );
+    }
+
+    public function test_comando_nao_notifica_quando_boleto_ja_foi_marcado_como_pago(): void
+    {
+        Notification::fake();
+
+        [, , $license] = $this->createCustomerScenario();
+        $invoice = GroupLicenseInvoice::query()->create([
+            'group_license_id' => $license->getKey(),
+            'group_id' => $license->getAttribute('group_id'),
+            'reference_month' => now()->startOfMonth()->toDateString(),
+            'amount_cents' => 9900,
+            'due_date' => now()->toDateString(),
+            'status' => GroupLicenseInvoiceStatus::Paid,
+            'paid_at' => now(),
+        ]);
+
+        /** @var User $owner */
+        $owner = $invoice->group()->firstOrFail()->owner()->firstOrFail();
+
+        $this->artisan('frotika:notify-group-license-due-today')
+            ->expectsOutputToContain('Nenhum boleto pendente vencendo hoje para notificar.')
+            ->assertSuccessful();
+
+        Notification::assertNotSentTo($owner, GroupLicenseInvoiceDueTodayNotification::class);
     }
 
     private function createPlatformAdmin(): User

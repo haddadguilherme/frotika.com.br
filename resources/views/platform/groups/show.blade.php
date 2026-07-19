@@ -1,6 +1,6 @@
 @extends('platform.layout')
 
-@section('title', $group->name.' | Administração Frotika')
+@section('title', $group->name . ' | Administração Frotika')
 
 @section('content')
     <x-ui.page-header title="{{ $group->name }}" subtitle="Licença, faturas, empresas e usuários do grupo">
@@ -73,36 +73,36 @@
                 </div>
 
                 <div>
-                    <form method="POST"
-                        action="{{ route('platform.licenses.issue', ['license' => $license->getKey()]) }}"
+                    <form method="POST" action="{{ route('platform.licenses.issue', ['license' => $license->getKey()]) }}"
+                        enctype="multipart/form-data"
                         class="grid gap-1.5 rounded-md border border-slate-200 bg-slate-50 p-2.5">
                         @csrf
-                        <label class="text-2xs font-medium text-slate-600" for="amount_cents">Mensalidade (centavos)</label>
-                        <input id="amount_cents" name="amount_cents" type="number" min="1"
-                            value="{{ $license->monthly_price_cents ?: $defaultMonthlyPriceCents }}"
+                        <label class="text-2xs font-medium text-slate-600" for="amount_reais">Mensalidade (R$)</label>
+                        <input id="amount_reais" name="amount_reais" type="text" inputmode="decimal" placeholder="99,90"
+                            value="{{ old('amount_reais', Format::moneyDecimal(($license->monthly_price_cents ?: $defaultMonthlyPriceCents) / 100)) }}"
                             class="h-8 rounded border border-slate-300 px-2 font-mono text-sm text-slate-900 tabular focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
                             required />
 
                         <label class="text-2xs font-medium text-slate-600" for="due_date">Vencimento</label>
-                        <input id="due_date" name="due_date" type="date" value="{{ now()->addDays(3)->toDateString() }}"
+                        <input id="due_date" name="due_date" type="date"
+                            value="{{ old('due_date', now()->addDays(3)->toDateString()) }}"
                             class="h-8 rounded border border-slate-300 px-2 text-sm text-slate-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
                             required />
 
-                        <label class="text-2xs font-medium text-slate-600" for="reference_month">Competência (AAAA-MM)</label>
-                        <input id="reference_month" name="reference_month" type="month" value="{{ now()->format('Y-m') }}"
+                        <label class="text-2xs font-medium text-slate-600" for="reference_month">Competência
+                            (AAAA-MM)</label>
+                        <input id="reference_month" name="reference_month" type="month"
+                            value="{{ old('reference_month', now()->format('Y-m')) }}"
                             class="h-8 rounded border border-slate-300 px-2 text-sm text-slate-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
 
                         <label class="text-2xs font-medium text-slate-600" for="boleto_number">Linha digitável</label>
                         <input id="boleto_number" name="boleto_number" type="text" placeholder="Opcional"
+                            value="{{ old('boleto_number') }}"
                             class="h-8 rounded border border-slate-300 px-2 text-sm text-slate-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
 
-                        <label class="text-2xs font-medium text-slate-600" for="boleto_url">URL do boleto</label>
-                        <input id="boleto_url" name="boleto_url" type="url" placeholder="https://..."
-                            class="h-8 rounded border border-slate-300 px-2 text-sm text-slate-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
-
-                        <label class="text-2xs font-medium text-slate-600" for="boleto_pdf_url">URL do PDF</label>
-                        <input id="boleto_pdf_url" name="boleto_pdf_url" type="url" placeholder="https://..."
-                            class="h-8 rounded border border-slate-300 px-2 text-sm text-slate-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+                        <label class="text-2xs font-medium text-slate-600" for="boleto_file">Anexo do boleto</label>
+                        <input id="boleto_file" name="boleto_file" type="file" accept=".pdf,.jpg,.jpeg,.png"
+                            class="h-8 rounded border border-slate-300 px-2 text-xs text-slate-700 file:mr-2 file:border-0 file:bg-slate-200 file:px-2 file:py-1 file:text-2xs file:font-medium file:text-slate-700 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
 
                         <x-ui.button type="submit" size="sm" class="mt-1">Lançar boleto</x-ui.button>
                     </form>
@@ -155,7 +155,7 @@
                             <td class="px-3 py-2 font-mono text-xs text-slate-600 tabular">
                                 {{ Format::cnpj($company->getAttribute('cnpj')) }}</td>
                             <td class="px-3 py-2 text-slate-600">
-                                {{ collect([$company->getAttribute('city'), $company->getAttribute('state')])->filter()->join('/') ?: '—' }}
+                                {{ collect([$company->getAttribute('city'), $company->getAttribute('state')])->filter()->join('/') ?:'—' }}
                             </td>
                         </tr>
                     @empty
