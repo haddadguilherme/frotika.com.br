@@ -3,8 +3,7 @@
 @section('title', 'Backups | Administração Frotika')
 
 @section('content')
-    <x-ui.page-header title="Backups automatizados"
-        subtitle="Rotina de segurança do banco e dos arquivos da aplicação">
+    <x-ui.page-header title="Backups automatizados" subtitle="Rotina de segurança do banco e dos arquivos da aplicação">
         <x-slot:actions>
             <form method="POST" action="{{ route('platform.backups.run-db') }}">
                 @csrf
@@ -69,8 +68,10 @@
                     @forelse ($files as $file)
                         <tr class="h-9 border-b border-slate-100">
                             <td class="px-3 py-2 font-mono text-xs text-slate-700">{{ $file['file_name'] }}</td>
-                            <td class="px-3 py-2 font-mono text-xs text-slate-600 tabular">{{ $file['last_modified_label'] }}</td>
-                            <td class="px-3 py-2 text-right font-mono text-xs text-slate-900 tabular">{{ $file['size_human'] }}</td>
+                            <td class="px-3 py-2 font-mono text-xs text-slate-600 tabular">
+                                {{ $file['last_modified_label'] }}</td>
+                            <td class="px-3 py-2 text-right font-mono text-xs text-slate-900 tabular">
+                                {{ $file['size_human'] }}</td>
                             <td class="px-3 py-2">
                                 <div class="flex items-center justify-end gap-2">
                                     <a href="{{ route('platform.backups.download', ['file' => $file['file_name']]) }}"
