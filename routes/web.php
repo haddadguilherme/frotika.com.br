@@ -62,7 +62,9 @@ use App\Http\Controllers\Partners\ShowCreateBusinessPartnerController;
 use App\Http\Controllers\Partners\ShowEditBusinessPartnerController;
 use App\Http\Controllers\Partners\StoreBusinessPartnerController;
 use App\Http\Controllers\Partners\UpdateBusinessPartnerController;
+use App\Http\Controllers\Reports\ShowCostParametersController;
 use App\Http\Controllers\Reports\ShowDreController;
+use App\Http\Controllers\Reports\UpdateCostParametersController;
 use App\Http\Controllers\Tenancy\CreateCompanyController;
 use App\Http\Controllers\Tenancy\DeactivateCompanyController;
 use App\Http\Controllers\Tenancy\ListCompaniesController;
@@ -181,6 +183,8 @@ Route::middleware('auth')->group(function (): void {
         Route::get('/fluxo-de-caixa', ShowCashFlowController::class)->name('cash-flow.index');
 
         Route::get('/dre', ShowDreController::class)->name('dre.index');
+        Route::get('/dre/parametros', ShowCostParametersController::class)->name('cost-parameters.edit');
+        Route::put('/dre/parametros', UpdateCostParametersController::class)->name('cost-parameters.update');
 
         Route::get('/lancamentos', ListFinancialEntriesController::class)->name('financial-entries.index');
         Route::get('/lancamentos/novo', ShowCreateFinancialEntryController::class)->name('financial-entries.create');

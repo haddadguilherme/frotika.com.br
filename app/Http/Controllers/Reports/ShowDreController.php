@@ -36,6 +36,7 @@ final class ShowDreController
             'cost_km' => static fn (array $v): float => (float) $v['per_km']['cost'],
             'consumption' => static fn (array $v): float => (float) ($v['consumption'] ?? 0.0),
             'net_result' => static fn (array $v): int => (int) $v['metrics']['net_result_cents'],
+            'economic_result' => static fn (array $v): int => (int) $v['economic_result_cents'],
         ];
     }
 

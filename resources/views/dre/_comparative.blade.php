@@ -47,15 +47,20 @@
                         <a href="{{ $sortUrl('consumption') }}" class="hover:text-slate-900">km/l{{ $arrow('consumption') }}</a>
                     </th>
                     <th class="w-32 px-3 py-2 text-right">
-                        <a href="{{ $sortUrl('net_result') }}" class="hover:text-slate-900">Resultado{{ $arrow('net_result') }}</a>
+                        <a href="{{ $sortUrl('net_result') }}" class="hover:text-slate-900">Result. caixa{{ $arrow('net_result') }}</a>
                     </th>
-                    <th class="w-72 px-3 py-2 text-left">Resultado por km</th>
+                    <th class="w-32 px-3 py-2 text-right">
+                        <a href="{{ $sortUrl('economic_result') }}" class="hover:text-slate-900">Econômico{{ $arrow('economic_result') }}</a>
+                    </th>
+                    <th class="w-64 px-3 py-2 text-left">Resultado por km</th>
                 </tr>
             </thead>
             <tbody>
                 @forelse ($rows as $row)
                     @php
                         $net = $row['metrics']['net_result_cents'];
+                        $economic = $row['economic_result_cents'];
+                        $hasReserves = $row['reserves']['total_cents'] !== 0;
                         $href = route('dre.index', ['from' => $filters['from'], 'to' => $filters['to'], 'vehicle' => $row['vehicle_id']]);
                     @endphp
                     <tr class="h-9 cursor-pointer border-b border-slate-100 hover:bg-slate-50"
@@ -75,6 +80,12 @@
                             'text-danger-700' => $net < 0,
                             'text-slate-900' => $net >= 0,
                         ])>{{ Format::money($net, true) }}</td>
+                        <td @class([
+                            'px-3 text-right font-mono tabular font-medium',
+                            'text-danger-700' => $economic < 0,
+                            'text-slate-900' => $economic >= 0,
+                            'text-slate-400' => ! $hasReserves,
+                        ])>{{ $hasReserves ? Format::money($economic, true) : '—' }}</td>
                         <td class="px-3">
                             @if ($row['km'] > 0)
                                 <x-ui.km-gauge :revenue="$row['per_km']['revenue']" :cost="$row['per_km']['cost']"
@@ -86,7 +97,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="8">
+                        <td colspan="9">
                             <div class="px-4 py-12 text-center">
                                 <p class="font-display text-lg font-semibold text-slate-900">Nenhum veículo com movimento no período.</p>
                                 <p class="mx-auto mt-1 max-w-md text-sm text-slate-500">
@@ -115,6 +126,12 @@
                             'text-danger-700' => $totalNet < 0,
                             'text-slate-900' => $totalNet >= 0,
                         ])>{{ Format::money($totalNet, true) }}</td>
+                        @php $totalEconomic = $totals['economic_result_cents']; @endphp
+                        <td @class([
+                            'px-3 py-2 text-right font-mono tabular',
+                            'text-danger-700' => $totalEconomic < 0,
+                            'text-slate-900' => $totalEconomic >= 0,
+                        ])>{{ Format::money($totalEconomic, true) }}</td>
                         <td class="px-3"></td>
                     </tr>
                 </tfoot>
@@ -127,6 +144,8 @@
         @forelse ($rows as $row)
             @php
                 $net = $row['metrics']['net_result_cents'];
+                $economic = $row['economic_result_cents'];
+                $hasReserves = $row['reserves']['total_cents'] !== 0;
                 $href = route('dre.index', ['from' => $filters['from'], 'to' => $filters['to'], 'vehicle' => $row['vehicle_id']]);
             @endphp
             <a href="{{ $href }}" class="block px-4 py-3 active:bg-slate-50">
@@ -149,6 +168,9 @@
                 <div class="mt-2 flex gap-4 text-2xs text-slate-500">
                     <span>{{ $row['km'] > 0 ? Format::km($row['km']) : '—' }}</span>
                     <span>{{ Format::consumption($row['consumption']) }}</span>
+                    @if ($hasReserves)
+                        <span>Econ.: <span class="font-mono tabular {{ $economic < 0 ? 'text-danger-700' : 'text-slate-700' }}">{{ Format::money($economic, true) }}</span></span>
+                    @endif
                 </div>
             </a>
         @empty

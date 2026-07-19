@@ -8,6 +8,7 @@ use App\Domain\Finance\Actions\SeedDefaultFinancialCategories;
 use App\Domain\Finance\Models\FinancialCategory;
 use App\Domain\Finance\Models\FinancialEntry;
 use App\Domain\Fleet\Models\Vehicle;
+use App\Domain\Fleet\Models\VehicleCostParameter;
 use App\Domain\Fuelings\Models\Fueling;
 use App\Domain\Reports\Dre\DreBuilder;
 use App\Domain\Tenancy\Models\Company;
@@ -258,6 +259,81 @@ final class DreBuilderTest extends TestCase
 
         $this->assertSame(100_000, $categoriesByCode['1.1']);
         $this->assertSame(-450_000, $categoriesByCode['3.1']);
+    }
+
+    public function test_calcula_reservas_e_resultado_economico_com_override_por_veiculo(): void
+    {
+        $company = $this->createCompany(906);
+        $author = User::factory()->create();
+
+        $this->setApportionmentMethod($company, 'none');
+
+        $tenant = app(TenantContext::class);
+
+        [$vehicleId, $revenueCategoryId] = $tenant->runFor(
+            $company,
+            function () use ($company): array {
+                app(SeedDefaultFinancialCategories::class)->execute($company);
+
+                $vehicle = Vehicle::query()->create([
+                    'plate' => 'QHH8H88',
+                    'type' => 'tractor',
+                    'status' => 'active',
+                    'ownership' => 'own',
+                ]);
+
+                // Padrão da empresa.
+                VehicleCostParameter::query()->create([
+                    'vehicle_id' => null,
+                    'tire_set_price_cents' => 800_000,
+                    'tire_life_km' => 100_000,
+                    'oil_change_cost_cents' => 60_000,
+                    'oil_interval_km' => 15_000,
+                    'prudential_percent' => 5.0,
+                    'driver_salary_cents' => 300_000,
+                    'owner_prolabore_cents' => 200_000,
+                ]);
+
+                // Override do veículo: só o salário.
+                VehicleCostParameter::query()->create([
+                    'vehicle_id' => $vehicle->getKey(),
+                    'driver_salary_cents' => 400_000,
+                ]);
+
+                $revenueCategory = FinancialCategory::query()->where('code', '1.1')->firstOrFail();
+
+                return [
+                    (int) $vehicle->getKey(),
+                    (int) $revenueCategory->getKey(),
+                ];
+            }
+        );
+
+        $this->createEntry($company, $author, $vehicleId, $revenueCategoryId, 'revenue', 1_000_000, '2026-07-10');
+        // 2.500 km e R$ 4.500 de combustível (via EntrySynchronizer).
+        $this->createFueling($company, $author, $vehicleId, 1_000, 2.5, '2026-07-11 08:00:00');
+        $this->createFueling($company, $author, $vehicleId, 1_500, 3.0, '2026-07-18 08:00:00');
+
+        $dre = app(DreBuilder::class)->execute($company, '2026-07-01', '2026-07-31');
+
+        $vehicle = $dre['vehicles'][0];
+        $reserves = $vehicle['reserves'];
+
+        // Resultado de caixa: receita 1.000.000 − combustível 450.000.
+        $this->assertSame(550_000, $vehicle['metrics']['net_result_cents']);
+
+        $this->assertSame(-20_000, $reserves['tire_cents']);   // 8 c/km × 2500
+        $this->assertSame(-10_000, $reserves['oil_cents']);    // 4 c/km × 2500
+        $this->assertSame(-50_000, $reserves['prudential_cents']); // 5% de 1.000.000
+        $this->assertSame(-400_000, $reserves['driver_salary_cents']); // override
+        $this->assertSame(-200_000, $reserves['owner_prolabore_cents']); // padrão
+        $this->assertSame(-680_000, $reserves['total_cents']);
+
+        // Econômico = caixa 550.000 − reservas 680.000.
+        $this->assertSame(-130_000, $vehicle['economic_result_cents']);
+
+        $this->assertSame(-680_000, $dre['totals']['reserves']['total_cents']);
+        $this->assertSame(-130_000, $dre['totals']['economic_result_cents']);
     }
 
     public function test_periodo_sem_dados_retorna_zerado_sem_erro(): void

@@ -19,6 +19,14 @@
     $catsByGroup = collect($vehicle['categories'])->groupBy('dre_group');
 
     $cellTone = fn (int $cents): string => $cents < 0 ? 'text-danger-700' : 'text-slate-900';
+
+    // Camada econômica: reservas e provisões (ADR-008). Só aparece quando há
+    // parâmetro configurado — senão o resultado econômico é igual ao de caixa.
+    $r = $vehicle['reserves'];
+    $rp = $r['params'];
+    $hasReserves = $r['total_cents'] !== 0;
+    $economic = $vehicle['economic_result_cents'];
+    $economicMarginPercent = $netRevenue !== 0 ? round(($economic * 100) / $netRevenue, 1) : null;
 @endphp
 
 <div class="space-y-4">
@@ -32,13 +40,27 @@
                     <p class="text-2xs uppercase tracking-wide text-slate-500">{{ $typeLabel }}</p>
                 @endif
             </div>
-            <div class="ml-auto text-right">
-                <p class="text-2xs font-semibold uppercase tracking-wide text-slate-500">Resultado líquido</p>
-                <p @class([
-                    'font-display text-2xl font-bold tabular',
-                    'text-danger-700' => $net < 0,
-                    'text-success-700' => $net >= 0,
-                ])>{{ Format::money($net, true) }}</p>
+            <div class="ml-auto flex items-start gap-6 text-right">
+                <div>
+                    <p class="text-2xs font-semibold uppercase tracking-wide text-slate-500">Resultado líquido</p>
+                    <p @class([
+                        'font-display text-2xl font-bold tabular',
+                        'text-danger-700' => $net < 0,
+                        'text-success-700' => $net >= 0,
+                    ])>{{ Format::money($net, true) }}</p>
+                    <p class="text-2xs text-slate-400">de caixa</p>
+                </div>
+                @if ($hasReserves)
+                    <div class="border-l border-slate-200 pl-6">
+                        <p class="text-2xs font-semibold uppercase tracking-wide text-slate-500">Resultado econômico</p>
+                        <p @class([
+                            'font-display text-2xl font-bold tabular',
+                            'text-danger-700' => $economic < 0,
+                            'text-success-700' => $economic >= 0,
+                        ])>{{ Format::money($economic, true) }}</p>
+                        <p class="text-2xs text-slate-400">com reservas</p>
+                    </div>
+                @endif
             </div>
         </div>
 
@@ -119,7 +141,9 @@
                     @include('dre._dre-apportioned', ['label' => '(−) RATEIO DE DESPESAS FINANCEIRAS', 'cents' => $g[FinancialCategoryDreGroup::FinancialExpense->value], 'key' => 'financial'])
 
                     <tr class="border-t-2 border-slate-300 bg-slate-50">
-                        <td class="px-3 py-2.5 font-display text-base font-bold text-slate-900">= RESULTADO LÍQUIDO DO VEÍCULO</td>
+                        <td class="px-3 py-2.5 font-display text-base font-bold text-slate-900">
+                            = RESULTADO {{ $hasReserves ? 'LÍQUIDO (CAIXA)' : 'LÍQUIDO DO VEÍCULO' }}
+                        </td>
                         <td @class([
                             'px-3 py-2.5 text-right font-display text-base font-bold tabular',
                             'text-danger-700' => $net < 0,
@@ -128,8 +152,38 @@
                         <td class="px-3 py-2.5 text-right font-mono tabular text-slate-500">{{ $fmtPct($net) }}</td>
                         <td class="px-3 py-2.5 text-right font-mono tabular text-slate-500">{{ $fmtPerKm($net) }}</td>
                     </tr>
+
+                    @if ($hasReserves)
+                        {{-- Camada econômica: reservas/provisões (não-caixa) --}}
+                        @include('dre._dre-subtotal', ['label' => '(−) RESERVAS E PROVISÕES', 'cents' => $r['total_cents']])
+                        @include('dre._dre-apportioned', ['label' => 'Reserva de pneu', 'cents' => $r['tire_cents'], 'key' => 'reserve-tire'])
+                        @include('dre._dre-apportioned', ['label' => 'Reserva de óleo', 'cents' => $r['oil_cents'], 'key' => 'reserve-oil'])
+                        @include('dre._dre-apportioned', ['label' => 'Reserva prudencial', 'cents' => $r['prudential_cents'], 'key' => 'reserve-prudential'])
+                        @include('dre._dre-apportioned', ['label' => 'Salário do motorista (provisão)', 'cents' => $r['driver_salary_cents'], 'key' => 'reserve-salary'])
+                        @include('dre._dre-apportioned', ['label' => 'Pró-labore do dono (provisão)', 'cents' => $r['owner_prolabore_cents'], 'key' => 'reserve-prolabore'])
+
+                        <tr class="border-t-2 border-slate-300 bg-slate-50">
+                            <td class="px-3 py-2.5 font-display text-base font-bold text-slate-900">= RESULTADO ECONÔMICO</td>
+                            <td @class([
+                                'px-3 py-2.5 text-right font-display text-base font-bold tabular',
+                                'text-danger-700' => $economic < 0,
+                                'text-success-700' => $economic >= 0,
+                            ])>{{ Format::money($economic, true) }}</td>
+                            <td class="px-3 py-2.5 text-right font-mono tabular text-slate-500">{{ $fmtPct($economic) }}</td>
+                            <td class="px-3 py-2.5 text-right font-mono tabular text-slate-500">{{ $fmtPerKm($economic) }}</td>
+                        </tr>
+                    @endif
                 </tbody>
             </table>
+
+            @if ($hasReserves)
+                <p class="border-t border-slate-100 px-3 py-2 text-2xs text-slate-500">
+                    Reservas são provisões calculadas dos parâmetros do veículo — entram no resultado econômico por
+                    competência, mas <strong>não</strong> no fluxo de caixa. Salário e pró-labore são imputados sempre,
+                    independentemente de lançamentos manuais.
+                    <a href="{{ route('cost-parameters.edit') }}" class="text-brand-700 hover:underline">Ajustar parâmetros</a>.
+                </p>
+            @endif
         </div>
 
         {{-- Painel de drill-down --}}
@@ -175,6 +229,47 @@
                     (<span class="font-mono tabular">{{ Format::percent($vehicle['apportionment']['basis_percent']) }}</span>).
                     Não há lançamentos diretos deste veículo aqui.
                 </div>
+
+                @if ($hasReserves)
+                    <div id="detail-reserve-tire" class="dre-detail hidden px-4 py-6 text-sm text-slate-600">
+                        <p class="mb-2 font-medium text-slate-900">Reserva de pneu</p>
+                        Provisão por km para repor o jogo de pneus:
+                        <span class="font-mono tabular">{{ Format::money($rp['tire_set_price_cents']) }}</span>
+                        ÷ <span class="font-mono tabular">{{ Format::km($rp['tire_life_km']) }}</span> de vida útil
+                        × <span class="font-mono tabular">{{ Format::km($km) }}</span> rodados no período
+                        = <span class="font-mono tabular {{ $cellTone($r['tire_cents']) }}">{{ Format::money($r['tire_cents']) }}</span>.
+                    </div>
+                    <div id="detail-reserve-oil" class="dre-detail hidden px-4 py-6 text-sm text-slate-600">
+                        <p class="mb-2 font-medium text-slate-900">Reserva de óleo</p>
+                        Provisão por km para a próxima troca de óleo:
+                        <span class="font-mono tabular">{{ Format::money($rp['oil_change_cost_cents']) }}</span>
+                        ÷ <span class="font-mono tabular">{{ Format::km($rp['oil_interval_km']) }}</span> de intervalo
+                        × <span class="font-mono tabular">{{ Format::km($km) }}</span> rodados
+                        = <span class="font-mono tabular {{ $cellTone($r['oil_cents']) }}">{{ Format::money($r['oil_cents']) }}</span>.
+                    </div>
+                    <div id="detail-reserve-prudential" class="dre-detail hidden px-4 py-6 text-sm text-slate-600">
+                        <p class="mb-2 font-medium text-slate-900">Reserva prudencial</p>
+                        Colchão para imprevistos:
+                        <span class="font-mono tabular">{{ Format::percent($rp['prudential_percent']) }}</span>
+                        da receita líquida (<span class="font-mono tabular">{{ Format::money($netRevenue) }}</span>)
+                        = <span class="font-mono tabular {{ $cellTone($r['prudential_cents']) }}">{{ Format::money($r['prudential_cents']) }}</span>.
+                        Só incide sobre receita positiva.
+                    </div>
+                    <div id="detail-reserve-salary" class="dre-detail hidden px-4 py-6 text-sm text-slate-600">
+                        <p class="mb-2 font-medium text-slate-900">Salário do motorista (provisão)</p>
+                        Custo mensal imputado ao veículo:
+                        <span class="font-mono tabular">{{ Format::money($rp['driver_salary_cents']) }}</span>/mês
+                        × <span class="font-mono tabular">{{ Format::moneyDecimal($rp['months']) }}</span> meses do período
+                        = <span class="font-mono tabular {{ $cellTone($r['driver_salary_cents']) }}">{{ Format::money($r['driver_salary_cents']) }}</span>.
+                    </div>
+                    <div id="detail-reserve-prolabore" class="dre-detail hidden px-4 py-6 text-sm text-slate-600">
+                        <p class="mb-2 font-medium text-slate-900">Pró-labore do dono (provisão)</p>
+                        Remuneração do dono do veículo:
+                        <span class="font-mono tabular">{{ Format::money($rp['owner_prolabore_cents']) }}</span>/mês
+                        × <span class="font-mono tabular">{{ Format::moneyDecimal($rp['months']) }}</span> meses
+                        = <span class="font-mono tabular {{ $cellTone($r['owner_prolabore_cents']) }}">{{ Format::money($r['owner_prolabore_cents']) }}</span>.
+                    </div>
+                @endif
             </div>
         </div>
     </div>

@@ -993,6 +993,17 @@ Toda linha do DRE é clicável e abre um painel lateral com os lançamentos que 
 - Comparativo da frota: uma única query com `GROUP BY vehicle_id`, não um loop de `DreBuilder`.
 - Exportação (PDF/XLSX) via job + notificação quando pronta, se > 20 veículos.
 
+### 9.8 Resultado econômico — reservas e provisões (ADR-008)
+
+Abaixo do resultado de caixa, o DRE individual mostra uma camada de **reservas e provisões** e um **= RESULTADO ECONÔMICO**. É o custo real de rodar o caminhão pela ótica da planilha de custos do setor: além do que saiu do bolso, quanto deveria estar sendo reservado para os gastos futuros e para uma remuneração justa.
+
+- **Dois resultados, sem contaminar o caixa.** O resultado de caixa é a agregação de `financial_entries` de sempre (intacta). O econômico = caixa − reservas. Reservas **não** viram lançamento e **não** entram no fluxo de caixa.
+- **Camada calculada, não lançada.** As reservas são calculadas na montagem do DRE a partir de `vehicle_cost_parameters` (linha com `vehicle_id` nulo = padrão da empresa; linha por veículo sobrescreve campo a campo). Dinheiro em `_cents`.
+- **Bases:** pneu = preço do jogo ÷ vida útil (R$/km) × km; óleo = custo da troca ÷ intervalo (R$/km) × km; prudencial = % da receita líquida (só positiva); salário do motorista e pró-labore do dono = R$/mês × meses do período (fração de dias por mês). O km é o mesmo do DRE (tanque cheio fechado, regra 8).
+- **Salário/pró-labore são imputados sempre**, independentemente de lançamento manual — a tela avisa do risco de dupla contagem. Tela "Parâmetros de custo" (Análise) edita padrão e overrides.
+
+Sem parâmetros, `reserves.total = 0` e o econômico é igual ao de caixa — a camada é opt-in. Cálculo puro em `App\Domain\Reports\Reserves\VehicleReservesCalculator` (coberto por teste). Ver ADR-008.
+
 ---
 
 ## 10. Assinatura e cobrança (SaaS)
