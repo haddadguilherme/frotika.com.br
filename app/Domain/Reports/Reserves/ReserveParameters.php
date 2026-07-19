@@ -10,17 +10,16 @@ use App\Domain\Fleet\Models\VehicleCostParameter;
  * Parâmetros de reserva já resolvidos para um veículo: o valor do próprio
  * veículo quando existe, senão o padrão da empresa, senão zero. Não há
  * lógica de reserva aqui — só o merge veículo↔empresa que o calculador consome.
+ * Reservas em R$/km; pró-labore em % da receita; salário em centavos/mês.
  */
 final readonly class ReserveParameters
 {
     public function __construct(
-        public int $tireSetPriceCents = 0,
-        public int $tireLifeKm = 0,
-        public int $oilChangeCostCents = 0,
-        public int $oilIntervalKm = 0,
-        public float $prudentialPercent = 0.0,
+        public float $oilReservePerKm = 0.0,
+        public float $tireReservePerKm = 0.0,
+        public float $prudentialReservePerKm = 0.0,
         public int $driverSalaryCents = 0,
-        public int $ownerProlaboreCents = 0,
+        public float $prolaborePercent = 0.0,
     ) {}
 
     /**
@@ -30,13 +29,11 @@ final readonly class ReserveParameters
     public static function resolve(?VehicleCostParameter $vehicle, ?VehicleCostParameter $default): self
     {
         return new self(
-            tireSetPriceCents: self::intField($vehicle, $default, 'tire_set_price_cents'),
-            tireLifeKm: self::intField($vehicle, $default, 'tire_life_km'),
-            oilChangeCostCents: self::intField($vehicle, $default, 'oil_change_cost_cents'),
-            oilIntervalKm: self::intField($vehicle, $default, 'oil_interval_km'),
-            prudentialPercent: self::floatField($vehicle, $default, 'prudential_percent'),
+            oilReservePerKm: self::floatField($vehicle, $default, 'oil_reserve_per_km'),
+            tireReservePerKm: self::floatField($vehicle, $default, 'tire_reserve_per_km'),
+            prudentialReservePerKm: self::floatField($vehicle, $default, 'prudential_reserve_per_km'),
             driverSalaryCents: self::intField($vehicle, $default, 'driver_salary_cents'),
-            ownerProlaboreCents: self::intField($vehicle, $default, 'owner_prolabore_cents'),
+            prolaborePercent: self::floatField($vehicle, $default, 'prolabore_percent'),
         );
     }
 

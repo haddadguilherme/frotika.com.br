@@ -29,20 +29,18 @@ final class CostParametersScreenTest extends TestCase
             ->assertSee('Padrão da empresa');
     }
 
-    public function test_salva_padrao_da_empresa_e_override_do_veiculo_em_centavos(): void
+    public function test_salva_padrao_da_empresa_e_override_do_veiculo(): void
     {
         [$owner, $company, $vehicleId] = $this->scenario(2);
 
         $this->actingAs($owner)
             ->put(route('cost-parameters.update'), [
                 'default' => [
-                    'tire_set_price' => '8.000,00',
-                    'tire_life_km' => '100000',
-                    'oil_change_cost' => '600,00',
-                    'oil_interval_km' => '15000',
-                    'prudential_percent' => '5',
+                    'oil_reserve_per_km' => '0,0700',
+                    'tire_reserve_per_km' => '0,2513',
+                    'prudential_reserve_per_km' => '0,2000',
                     'driver_salary' => '3.000,00',
-                    'owner_prolabore' => '2.000,00',
+                    'prolabore_percent' => '5',
                 ],
                 'vehicles' => [
                     (string) $vehicleId => [
@@ -54,26 +52,27 @@ final class CostParametersScreenTest extends TestCase
 
         app(TenantContext::class)->runFor($company, function () use ($vehicleId): void {
             $default = VehicleCostParameter::query()->whereNull('vehicle_id')->firstOrFail();
-            $this->assertSame(800_000, (int) $default->getAttribute('tire_set_price_cents'));
-            $this->assertSame(100_000, (int) $default->getAttribute('tire_life_km'));
+            $this->assertSame('0.0700', (string) $default->getAttribute('oil_reserve_per_km'));
+            $this->assertSame('0.2513', (string) $default->getAttribute('tire_reserve_per_km'));
+            $this->assertSame('0.2000', (string) $default->getAttribute('prudential_reserve_per_km'));
             $this->assertSame(300_000, (int) $default->getAttribute('driver_salary_cents'));
-            $this->assertSame('5.00', (string) $default->getAttribute('prudential_percent'));
+            $this->assertSame('5.00', (string) $default->getAttribute('prolabore_percent'));
 
             $override = VehicleCostParameter::query()->where('vehicle_id', $vehicleId)->firstOrFail();
             $this->assertSame(400_000, (int) $override->getAttribute('driver_salary_cents'));
-            $this->assertNull($override->getAttribute('tire_set_price_cents'));
+            $this->assertNull($override->getAttribute('oil_reserve_per_km'));
         });
     }
 
-    public function test_percentual_acima_de_cem_e_rejeitado(): void
+    public function test_percentual_de_prolabore_acima_de_cem_e_rejeitado(): void
     {
         [$owner] = $this->scenario(3);
 
         $this->actingAs($owner)
             ->put(route('cost-parameters.update'), [
-                'default' => ['prudential_percent' => '150'],
+                'default' => ['prolabore_percent' => '150'],
             ])
-            ->assertSessionHasErrors('default.prudential_percent');
+            ->assertSessionHasErrors('default.prolabore_percent');
     }
 
     /**

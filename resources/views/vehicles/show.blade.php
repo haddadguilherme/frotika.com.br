@@ -144,6 +144,64 @@
         </div>
     </div>
 
+    <div class="mt-4 rounded-lg border border-slate-200 bg-white p-4">
+        <div class="mb-3 flex items-center justify-between gap-2">
+            <div>
+                <h2 class="text-sm font-semibold text-slate-900">Leituras de hodômetro</h2>
+                <p class="text-2xs text-slate-500">Base do km do mês no DRE. Abastecimentos e manutenções já contam; registre aqui quando faltar leitura.</p>
+            </div>
+        </div>
+
+        @if ($canManage)
+            <form method="POST" action="{{ route('vehicles.odometer-readings.store', ['vehicle' => $vehicle->getKey()]) }}"
+                class="mb-4 grid gap-2 sm:grid-cols-[10rem_10rem_1fr_auto] sm:items-end">
+                @csrf
+                <div>
+                    <label for="read_on" class="text-2xs font-semibold uppercase tracking-wide text-slate-500">Data</label>
+                    <input id="read_on" type="date" name="read_on" value="{{ old('read_on', now()->format('Y-m-d')) }}"
+                        class="mt-1 h-9 w-full rounded-md border border-slate-300 bg-white px-2 text-sm text-slate-900" />
+                    @error('read_on')<p class="mt-1 text-2xs text-danger-700">{{ $message }}</p>@enderror
+                </div>
+                <div>
+                    <label for="odometer" class="text-2xs font-semibold uppercase tracking-wide text-slate-500">Hodômetro (km)</label>
+                    <input id="odometer" type="number" min="0" step="1" name="odometer" value="{{ old('odometer') }}"
+                        placeholder="{{ (int) $vehicle->getAttribute('odometer_current') }}"
+                        class="mt-1 h-9 w-full rounded-md border border-slate-300 bg-white px-2 text-right font-mono tabular text-sm text-slate-900" />
+                    @error('odometer')<p class="mt-1 text-2xs text-danger-700">{{ $message }}</p>@enderror
+                </div>
+                <div>
+                    <label for="note" class="text-2xs font-semibold uppercase tracking-wide text-slate-500">Observação</label>
+                    <input id="note" type="text" name="note" value="{{ old('note') }}" maxlength="255"
+                        placeholder="Opcional" class="mt-1 h-9 w-full rounded-md border border-slate-300 bg-white px-2 text-sm text-slate-900" />
+                </div>
+                <x-ui.button type="submit">Registrar</x-ui.button>
+            </form>
+        @endif
+
+        @if ($odometerReadings->isEmpty())
+            <p class="text-sm text-slate-500">Nenhuma leitura manual registrada.</p>
+        @else
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-slate-200 text-2xs uppercase tracking-wide text-slate-500">
+                        <th class="px-2 py-1.5 text-left">Data</th>
+                        <th class="px-2 py-1.5 text-right">Hodômetro</th>
+                        <th class="px-2 py-1.5 text-left">Observação</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($odometerReadings as $reading)
+                        <tr class="border-b border-slate-100">
+                            <td class="px-2 py-1.5 font-mono tabular text-slate-600">{{ Format::date($reading->getAttribute('read_on')) }}</td>
+                            <td class="px-2 py-1.5 text-right font-mono tabular text-slate-900">{{ Format::km((int) $reading->getAttribute('odometer')) }}</td>
+                            <td class="px-2 py-1.5 text-slate-600">{{ $reading->getAttribute('note') ?: '—' }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        @endif
+    </div>
+
     @if ($vehicle->getAttribute('notes'))
         <div class="mt-4 rounded-lg border border-slate-200 bg-white p-4">
             <h2 class="mb-2 text-sm font-semibold text-slate-900">Observações</h2>

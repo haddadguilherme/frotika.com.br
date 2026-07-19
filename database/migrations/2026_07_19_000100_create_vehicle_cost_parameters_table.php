@@ -16,18 +16,16 @@ return new class extends Migration
             // vehicle_id nulo = padrão da empresa; preenchido = override do veículo.
             $table->foreignId('vehicle_id')->nullable()->constrained()->cascadeOnDelete();
 
-            // Reservas por km: preço de reposição ÷ vida útil.
-            $table->bigInteger('tire_set_price_cents')->nullable();
-            $table->unsignedInteger('tire_life_km')->nullable();
-            $table->bigInteger('oil_change_cost_cents')->nullable();
-            $table->unsignedInteger('oil_interval_km')->nullable();
+            // Reservas em R$/km (fração de centavo por km — como preço/litro, decimal).
+            $table->decimal('oil_reserve_per_km', 10, 4)->nullable();
+            $table->decimal('tire_reserve_per_km', 10, 4)->nullable();
+            $table->decimal('prudential_reserve_per_km', 10, 4)->nullable();
 
-            // Reserva prudencial: % da receita líquida do período.
-            $table->decimal('prudential_percent', 5, 2)->nullable();
-
-            // Provisões mensais imputadas ao veículo.
+            // Salário do motorista: provisão mensal (motorista contratado).
             $table->bigInteger('driver_salary_cents')->nullable();
-            $table->bigInteger('owner_prolabore_cents')->nullable();
+
+            // Pró-labore/retirada do dono: % da receita líquida.
+            $table->decimal('prolabore_percent', 5, 2)->nullable();
 
             $table->timestamps();
 

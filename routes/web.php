@@ -38,6 +38,7 @@ use App\Http\Controllers\Fleet\ShowEditDriverController;
 use App\Http\Controllers\Fleet\ShowEditVehicleController;
 use App\Http\Controllers\Fleet\ShowVehicleController;
 use App\Http\Controllers\Fleet\StoreDriverController;
+use App\Http\Controllers\Fleet\StoreOdometerReadingController;
 use App\Http\Controllers\Fleet\StoreVehicleController;
 use App\Http\Controllers\Fleet\UpdateDriverController;
 use App\Http\Controllers\Fleet\UpdateVehicleController;
@@ -211,6 +212,9 @@ Route::middleware('auth')->group(function (): void {
         Route::get('/veiculos/{vehicle}', ShowVehicleController::class)
             ->whereNumber('vehicle')
             ->name('vehicles.show');
+        Route::post('/veiculos/{vehicle}/leituras', StoreOdometerReadingController::class)
+            ->whereNumber('vehicle')
+            ->name('vehicles.odometer-readings.store');
         Route::get('/veiculos/{vehicle}/editar', ShowEditVehicleController::class)
             ->whereNumber('vehicle')
             ->name('vehicles.edit');

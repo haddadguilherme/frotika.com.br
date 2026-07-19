@@ -7,7 +7,7 @@ namespace App\Domain\Fleet\Models;
 use App\Support\Tenancy\BelongsToCompany;
 use Illuminate\Database\Eloquent\Model;
 
-final class VehicleCostParameter extends Model
+final class VehicleOdometerReading extends Model
 {
     use BelongsToCompany;
 
@@ -17,11 +17,8 @@ final class VehicleCostParameter extends Model
     {
         return [
             'vehicle_id' => 'integer',
-            'oil_reserve_per_km' => 'decimal:4',
-            'tire_reserve_per_km' => 'decimal:4',
-            'prudential_reserve_per_km' => 'decimal:4',
-            'driver_salary_cents' => 'integer',
-            'prolabore_percent' => 'decimal:2',
+            'read_on' => 'date',
+            'odometer' => 'integer',
         ];
     }
 }

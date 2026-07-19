@@ -240,15 +240,16 @@ final class DreBuilderTest extends TestCase
         $vehicle = $dre['vehicles'][0];
 
         $this->assertSame($vehicleId, $vehicle['vehicle_id']);
-        $this->assertSame(2_500, $vehicle['km']);
-        // 2500 km / (1000/2.5 + 1500/3.0 = 900 L) = 2,78 km/l
+        // Distância por hodômetro: leituras dos abastecimentos 1.000 → 1.500.
+        $this->assertSame(500, $vehicle['km']);
+        // Consumo segue tanque cheio: 2.500 km / (1000/2.5 + 1500/3.0 = 900 L) = 2,78 km/l.
         $this->assertSame(2.78, $vehicle['consumption']);
-        // Receita líquida R$ 1.000,00 / 2.500 km = 0,40
-        $this->assertSame(0.4, $vehicle['per_km']['revenue']);
-        // Custo total R$ 4.500,00 / 2.500 km = 1,80
-        $this->assertSame(1.8, $vehicle['per_km']['cost']);
+        // Receita líquida R$ 1.000,00 / 500 km = 2,00.
+        $this->assertSame(2.0, $vehicle['per_km']['revenue']);
+        // Custo total R$ 4.500,00 / 500 km = 9,00.
+        $this->assertSame(9.0, $vehicle['per_km']['cost']);
 
-        $this->assertSame(2_500, $dre['totals']['km']);
+        $this->assertSame(500, $dre['totals']['km']);
         $this->assertSame(2.78, $dre['totals']['consumption']);
 
         $categoriesByCode = [];
@@ -282,16 +283,14 @@ final class DreBuilderTest extends TestCase
                     'ownership' => 'own',
                 ]);
 
-                // Padrão da empresa.
+                // Padrão da empresa (reservas em R$/km, pró-labore em %).
                 VehicleCostParameter::query()->create([
                     'vehicle_id' => null,
-                    'tire_set_price_cents' => 800_000,
-                    'tire_life_km' => 100_000,
-                    'oil_change_cost_cents' => 60_000,
-                    'oil_interval_km' => 15_000,
-                    'prudential_percent' => 5.0,
+                    'oil_reserve_per_km' => 0.10,
+                    'tire_reserve_per_km' => 0.20,
+                    'prudential_reserve_per_km' => 0.40,
                     'driver_salary_cents' => 300_000,
-                    'owner_prolabore_cents' => 200_000,
+                    'prolabore_percent' => 5.0,
                 ]);
 
                 // Override do veículo: só o salário.
@@ -310,7 +309,7 @@ final class DreBuilderTest extends TestCase
         );
 
         $this->createEntry($company, $author, $vehicleId, $revenueCategoryId, 'revenue', 1_000_000, '2026-07-10');
-        // 2.500 km e R$ 4.500 de combustível (via EntrySynchronizer).
+        // Odômetro 1.000 → 1.500 (distância 500 km) e R$ 4.500 de combustível.
         $this->createFueling($company, $author, $vehicleId, 1_000, 2.5, '2026-07-11 08:00:00');
         $this->createFueling($company, $author, $vehicleId, 1_500, 3.0, '2026-07-18 08:00:00');
 
@@ -319,21 +318,28 @@ final class DreBuilderTest extends TestCase
         $vehicle = $dre['vehicles'][0];
         $reserves = $vehicle['reserves'];
 
+        // Distância por hodômetro: 1.500 − 1.000.
+        $this->assertSame(500, $vehicle['km']);
+
         // Resultado de caixa: receita 1.000.000 − combustível 450.000.
         $this->assertSame(550_000, $vehicle['metrics']['net_result_cents']);
 
-        $this->assertSame(-20_000, $reserves['tire_cents']);   // 8 c/km × 2500
-        $this->assertSame(-10_000, $reserves['oil_cents']);    // 4 c/km × 2500
-        $this->assertSame(-50_000, $reserves['prudential_cents']); // 5% de 1.000.000
+        $this->assertSame(-5_000, $reserves['oil_cents']);          // R$ 0,10/km × 500
+        $this->assertSame(-10_000, $reserves['tire_cents']);        // R$ 0,20/km × 500
+        $this->assertSame(-20_000, $reserves['prudential_cents']);  // R$ 0,40/km × 500
         $this->assertSame(-400_000, $reserves['driver_salary_cents']); // override
-        $this->assertSame(-200_000, $reserves['owner_prolabore_cents']); // padrão
-        $this->assertSame(-680_000, $reserves['total_cents']);
+        $this->assertSame(-50_000, $reserves['prolabore_cents']);   // 5% de 1.000.000
+        $this->assertSame(-485_000, $reserves['total_cents']);
 
-        // Econômico = caixa 550.000 − reservas 680.000.
-        $this->assertSame(-130_000, $vehicle['economic_result_cents']);
+        // Antes das reservas = caixa 550.000 − salário 400.000 − pró-labore 50.000.
+        $this->assertSame(100_000, $vehicle['result_before_reserves_cents']);
 
-        $this->assertSame(-680_000, $dre['totals']['reserves']['total_cents']);
-        $this->assertSame(-130_000, $dre['totals']['economic_result_cents']);
+        // Econômico = caixa 550.000 − reservas 485.000.
+        $this->assertSame(65_000, $vehicle['economic_result_cents']);
+
+        $this->assertSame(-485_000, $dre['totals']['reserves']['total_cents']);
+        $this->assertSame(100_000, $dre['totals']['result_before_reserves_cents']);
+        $this->assertSame(65_000, $dre['totals']['economic_result_cents']);
     }
 
     public function test_periodo_sem_dados_retorna_zerado_sem_erro(): void

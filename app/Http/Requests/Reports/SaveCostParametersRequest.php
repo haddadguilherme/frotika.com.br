@@ -22,22 +22,18 @@ final class SaveCostParametersRequest extends FormRequest
     {
         return [
             'default' => ['array'],
-            'default.tire_set_price' => ['nullable', 'string', 'max:20'],
-            'default.tire_life_km' => ['nullable', 'integer', 'min:0', 'max:9999999'],
-            'default.oil_change_cost' => ['nullable', 'string', 'max:20'],
-            'default.oil_interval_km' => ['nullable', 'integer', 'min:0', 'max:9999999'],
-            'default.prudential_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'default.oil_reserve_per_km' => ['nullable', 'numeric', 'min:0', 'max:9999'],
+            'default.tire_reserve_per_km' => ['nullable', 'numeric', 'min:0', 'max:9999'],
+            'default.prudential_reserve_per_km' => ['nullable', 'numeric', 'min:0', 'max:9999'],
             'default.driver_salary' => ['nullable', 'string', 'max:20'],
-            'default.owner_prolabore' => ['nullable', 'string', 'max:20'],
+            'default.prolabore_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
 
             'vehicles' => ['array'],
-            'vehicles.*.tire_set_price' => ['nullable', 'string', 'max:20'],
-            'vehicles.*.tire_life_km' => ['nullable', 'integer', 'min:0', 'max:9999999'],
-            'vehicles.*.oil_change_cost' => ['nullable', 'string', 'max:20'],
-            'vehicles.*.oil_interval_km' => ['nullable', 'integer', 'min:0', 'max:9999999'],
-            'vehicles.*.prudential_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'vehicles.*.oil_reserve_per_km' => ['nullable', 'numeric', 'min:0', 'max:9999'],
+            'vehicles.*.tire_reserve_per_km' => ['nullable', 'numeric', 'min:0', 'max:9999'],
+            'vehicles.*.prudential_reserve_per_km' => ['nullable', 'numeric', 'min:0', 'max:9999'],
             'vehicles.*.driver_salary' => ['nullable', 'string', 'max:20'],
-            'vehicles.*.owner_prolabore' => ['nullable', 'string', 'max:20'],
+            'vehicles.*.prolabore_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ];
     }
 
@@ -82,8 +78,18 @@ final class SaveCostParametersRequest extends FormRequest
     }
 
     /**
-     * Campos vazios viram null (input number vazio manda ""), e o percentual
-     * pode vir com vírgula do teclado pt-BR.
+     * @var list<string>
+     */
+    private const DECIMAL_FIELDS = [
+        'oil_reserve_per_km',
+        'tire_reserve_per_km',
+        'prudential_reserve_per_km',
+        'prolabore_percent',
+    ];
+
+    /**
+     * Campos vazios viram null (input number vazio manda ""), e os decimais
+     * podem vir com vírgula do teclado pt-BR.
      */
     private function normalizeRow(mixed $row): mixed
     {
@@ -98,8 +104,10 @@ final class SaveCostParametersRequest extends FormRequest
             }
         }
 
-        if (isset($row['prudential_percent']) && is_string($row['prudential_percent'])) {
-            $row['prudential_percent'] = str_replace(',', '.', $row['prudential_percent']);
+        foreach (self::DECIMAL_FIELDS as $field) {
+            if (isset($row[$field]) && is_string($row[$field])) {
+                $row[$field] = str_replace(',', '.', $row[$field]);
+            }
         }
 
         return $row;

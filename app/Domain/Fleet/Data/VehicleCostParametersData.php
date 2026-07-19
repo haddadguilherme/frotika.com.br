@@ -9,18 +9,17 @@ use App\Support\Money\Brl;
 /**
  * Parâmetros de reserva de um veículo (ou o padrão da empresa, com
  * vehicle_id nulo). Todo campo é opcional: nulo significa "herda o padrão da
- * empresa" (ou zero, no próprio padrão).
+ * empresa" (ou zero, no próprio padrão). Reservas em R$/km; pró-labore em % da
+ * receita líquida; salário do motorista em centavos/mês.
  */
 final readonly class VehicleCostParametersData
 {
     public function __construct(
-        public ?int $tireSetPriceCents = null,
-        public ?int $tireLifeKm = null,
-        public ?int $oilChangeCostCents = null,
-        public ?int $oilIntervalKm = null,
-        public ?float $prudentialPercent = null,
+        public ?float $oilReservePerKm = null,
+        public ?float $tireReservePerKm = null,
+        public ?float $prudentialReservePerKm = null,
         public ?int $driverSalaryCents = null,
-        public ?int $ownerProlaboreCents = null,
+        public ?float $prolaborePercent = null,
     ) {}
 
     /**
@@ -29,13 +28,11 @@ final readonly class VehicleCostParametersData
     public static function fromArray(array $data): self
     {
         return new self(
-            tireSetPriceCents: Brl::toCents(self::stringOrNull($data['tire_set_price'] ?? null)),
-            tireLifeKm: self::nullableInt($data['tire_life_km'] ?? null),
-            oilChangeCostCents: Brl::toCents(self::stringOrNull($data['oil_change_cost'] ?? null)),
-            oilIntervalKm: self::nullableInt($data['oil_interval_km'] ?? null),
-            prudentialPercent: self::nullableFloat($data['prudential_percent'] ?? null),
+            oilReservePerKm: self::nullableFloat($data['oil_reserve_per_km'] ?? null),
+            tireReservePerKm: self::nullableFloat($data['tire_reserve_per_km'] ?? null),
+            prudentialReservePerKm: self::nullableFloat($data['prudential_reserve_per_km'] ?? null),
             driverSalaryCents: Brl::toCents(self::stringOrNull($data['driver_salary'] ?? null)),
-            ownerProlaboreCents: Brl::toCents(self::stringOrNull($data['owner_prolabore'] ?? null)),
+            prolaborePercent: self::nullableFloat($data['prolabore_percent'] ?? null),
         );
     }
 
@@ -45,13 +42,11 @@ final readonly class VehicleCostParametersData
     public function toAttributes(): array
     {
         return [
-            'tire_set_price_cents' => $this->tireSetPriceCents,
-            'tire_life_km' => $this->tireLifeKm,
-            'oil_change_cost_cents' => $this->oilChangeCostCents,
-            'oil_interval_km' => $this->oilIntervalKm,
-            'prudential_percent' => $this->prudentialPercent,
+            'oil_reserve_per_km' => $this->oilReservePerKm,
+            'tire_reserve_per_km' => $this->tireReservePerKm,
+            'prudential_reserve_per_km' => $this->prudentialReservePerKm,
             'driver_salary_cents' => $this->driverSalaryCents,
-            'owner_prolabore_cents' => $this->ownerProlaboreCents,
+            'prolabore_percent' => $this->prolaborePercent,
         ];
     }
 
@@ -64,15 +59,6 @@ final readonly class VehicleCostParametersData
         $value = trim((string) $value);
 
         return $value === '' ? null : $value;
-    }
-
-    private static function nullableInt(mixed $value): ?int
-    {
-        if ($value === null || $value === '') {
-            return null;
-        }
-
-        return (int) $value;
     }
 
     private static function nullableFloat(mixed $value): ?float

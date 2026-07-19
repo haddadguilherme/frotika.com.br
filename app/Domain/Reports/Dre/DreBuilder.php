@@ -13,7 +13,9 @@ use App\Domain\Fleet\Enums\VehicleStatus;
 use App\Domain\Fleet\Enums\VehicleType;
 use App\Domain\Fleet\Models\Vehicle;
 use App\Domain\Fleet\Models\VehicleCostParameter;
+use App\Domain\Fleet\Models\VehicleOdometerReading;
 use App\Domain\Fuelings\Models\Fueling;
+use App\Domain\Maintenances\Models\Maintenance;
 use App\Domain\Reports\Reserves\ReserveParameters;
 use App\Domain\Reports\Reserves\VehicleReservesCalculator;
 use App\Domain\Tenancy\Models\Company;
@@ -95,7 +97,8 @@ final class DreBuilder
      *         consumption: float|null,
      *         per_km: array{revenue: float, cost: float, breakeven: float|null},
      *         breakeven_km: int|null,
-     *         reserves: array{oil_cents: int, tire_cents: int, prudential_cents: int, driver_salary_cents: int, owner_prolabore_cents: int, total_cents: int},
+     *         reserves: array{oil_cents: int, tire_cents: int, prudential_cents: int, driver_salary_cents: int, prolabore_cents: int, total_cents: int},
+     *         result_before_reserves_cents: int,
      *         economic_result_cents: int
      *     },
      *     vehicles: list<array{
@@ -117,6 +120,7 @@ final class DreBuilder
      *             net_result_cents: int
      *         },
      *         km: int,
+     *         consumption_km: int,
      *         liters: float,
      *         consumption: float|null,
      *         per_km: array{revenue: float, cost: float, breakeven: float|null},
@@ -126,10 +130,11 @@ final class DreBuilder
      *             tire_cents: int,
      *             prudential_cents: int,
      *             driver_salary_cents: int,
-     *             owner_prolabore_cents: int,
+     *             prolabore_cents: int,
      *             total_cents: int,
-     *             params: array{tire_set_price_cents: int, tire_life_km: int, oil_change_cost_cents: int, oil_interval_km: int, prudential_percent: float, driver_salary_cents: int, owner_prolabore_cents: int, months: float}
+     *             params: array{oil_reserve_per_km: float, tire_reserve_per_km: float, prudential_reserve_per_km: float, driver_salary_cents: int, prolabore_percent: float, months: float}
      *         },
+     *         result_before_reserves_cents: int,
      *         economic_result_cents: int,
      *         categories: list<array{category_id: int, code: string, name: string, dre_group: string, amount_cents: int}>,
      *         apportionment: array{
@@ -172,6 +177,7 @@ final class DreBuilder
 
             $vehicles = $this->loadVehiclesForOutput($vehicleIdsForOutput);
             $kmByVehicle = $this->loadKmByVehicle($vehicleIdsForOutput, $from, $to);
+            $distanceByVehicle = $this->loadDistanceByVehicle($vehicleIdsForOutput, $from, $to);
             $directCategoriesByVehicle = $this->loadDirectCategoriesByVehicle($from, $to);
             $reserveParamsByVehicle = $this->loadReserveParameters($vehicleIdsForOutput);
             $months = $this->monthsInPeriod($from, $to);
@@ -202,11 +208,15 @@ final class DreBuilder
                     ? round(($basisValue * 100) / $basisTotal, 2)
                     : 0.0;
 
-                $km = $kmByVehicle[$vehicleId]['km'] ?? 0;
+                // Distância (hodômetro) alimenta reservas, R$/km e o card de km;
+                // consumo (tanque cheio, regra 8) alimenta só o km/l.
+                $distance = $distanceByVehicle[$vehicleId] ?? 0;
+                $consumptionKm = $kmByVehicle[$vehicleId]['km'] ?? 0;
                 $liters = $kmByVehicle[$vehicleId]['liters'] ?? 0.0;
 
                 $params = $reserveParamsByVehicle[$vehicleId] ?? new ReserveParameters;
-                $reserves = $this->reserves->calculate($params, $km, $months, $metrics['net_revenue_cents']);
+                $reserves = $this->reserves->calculate($params, $distance, $months, $metrics['net_revenue_cents']);
+                $resultBeforeReserves = $metrics['net_result_cents'] + $reserves['driver_salary_cents'] + $reserves['prolabore_cents'];
 
                 $vehiclesPayload[] = [
                     'vehicle_id' => $vehicleId,
@@ -215,24 +225,24 @@ final class DreBuilder
                     'status' => $vehicle?->getAttribute('status')?->value,
                     'groups_cents' => $groups,
                     'metrics' => $metrics,
-                    'km' => $km,
+                    'km' => $distance,
+                    'consumption_km' => $consumptionKm,
                     'liters' => $liters,
-                    'consumption' => $liters > 0.0 ? round($km / $liters, 2) : null,
-                    'per_km' => $this->buildPerKm($metrics, $km),
-                    'breakeven_km' => $this->buildBreakevenKm($metrics, $km),
+                    'consumption' => $liters > 0.0 ? round($consumptionKm / $liters, 2) : null,
+                    'per_km' => $this->buildPerKm($metrics, $distance),
+                    'breakeven_km' => $this->buildBreakevenKm($metrics, $distance),
                     'reserves' => [
                         ...$reserves,
                         'params' => [
-                            'tire_set_price_cents' => $params->tireSetPriceCents,
-                            'tire_life_km' => $params->tireLifeKm,
-                            'oil_change_cost_cents' => $params->oilChangeCostCents,
-                            'oil_interval_km' => $params->oilIntervalKm,
-                            'prudential_percent' => $params->prudentialPercent,
+                            'oil_reserve_per_km' => $params->oilReservePerKm,
+                            'tire_reserve_per_km' => $params->tireReservePerKm,
+                            'prudential_reserve_per_km' => $params->prudentialReservePerKm,
                             'driver_salary_cents' => $params->driverSalaryCents,
-                            'owner_prolabore_cents' => $params->ownerProlaboreCents,
+                            'prolabore_percent' => $params->prolaborePercent,
                             'months' => $months,
                         ],
                     ],
+                    'result_before_reserves_cents' => $resultBeforeReserves,
                     'economic_result_cents' => $metrics['net_result_cents'] + $reserves['total_cents'],
                     'categories' => $directCategoriesByVehicle[$vehicleId] ?? [],
                     'apportionment' => [
@@ -347,10 +357,10 @@ final class DreBuilder
     }
 
     /**
-     * Km rodados e litros do período por veículo, para R$/km e consumo. Só
-     * intervalos de tanque cheio fechados entram (regra 8): `km_since_last` e
-     * `km_per_liter` só existem quando o intervalo fechou. Arla 32 e óleo nunca
-     * geram esses campos, então já ficam de fora.
+     * Km e litros dos intervalos de tanque cheio fechados (regra 8), usados
+     * **apenas para o consumo (km/l)**: `km_since_last` e `km_per_liter` só
+     * existem quando o intervalo fechou; Arla 32 e óleo nunca geram esses
+     * campos. A distância total do período vem do hodômetro (loadDistanceByVehicle).
      *
      * @param  list<int>  $vehicleIds
      * @return array<int, array{km: int, liters: float}>
@@ -380,6 +390,122 @@ final class DreBuilder
             $result[$vehicleId] ??= ['km' => 0, 'liters' => 0.0];
             $result[$vehicleId]['km'] += $km;
             $result[$vehicleId]['liters'] += $km / $kmPerLiter;
+        }
+
+        return $result;
+    }
+
+    /**
+     * Distância percorrida no período por hodômetro (híbrido). Reúne snapshots
+     * (data, odômetro) de abastecimentos, manutenções e leituras manuais, e
+     * calcula km = (última leitura ≤ to) − (última leitura < from). Sem leitura
+     * anterior ao período, usa a menor leitura dentro dele (subestima). Menos de
+     * duas leituras → veículo ausente do mapa (km desconhecido, não zero).
+     *
+     * @param  list<int>  $vehicleIds
+     * @return array<int, int>
+     */
+    private function loadDistanceByVehicle(array $vehicleIds, CarbonImmutable $from, CarbonImmutable $to): array
+    {
+        if ($vehicleIds === []) {
+            return [];
+        }
+
+        /** @var array<int, list<array{date: string, odometer: int}>> $snapshots */
+        $snapshots = [];
+
+        $push = function (int $vehicleId, ?string $date, mixed $odometer) use (&$snapshots): void {
+            if ($date === null) {
+                return;
+            }
+
+            $odometer = (int) $odometer;
+
+            if ($odometer <= 0) {
+                return;
+            }
+
+            $snapshots[$vehicleId][] = ['date' => $date, 'odometer' => $odometer];
+        };
+
+        $toDate = $to->toDateString();
+        $fromDate = $from->toDateString();
+
+        $fuelings = Fueling::query()
+            ->whereIn('vehicle_id', $vehicleIds)
+            ->where('fueled_at', '<=', $to->endOfDay())
+            ->get(['vehicle_id', 'fueled_at', 'odometer']);
+
+        foreach ($fuelings as $row) {
+            $push(
+                (int) $row->getAttribute('vehicle_id'),
+                $row->getAttribute('fueled_at')?->toDateString(),
+                $row->getAttribute('odometer'),
+            );
+        }
+
+        $maintenances = Maintenance::query()
+            ->whereIn('vehicle_id', $vehicleIds)
+            ->whereNotNull('odometer')
+            ->where('opened_at', '<=', $toDate)
+            ->get(['vehicle_id', 'opened_at', 'odometer']);
+
+        foreach ($maintenances as $row) {
+            $push(
+                (int) $row->getAttribute('vehicle_id'),
+                $row->getAttribute('opened_at')?->toDateString(),
+                $row->getAttribute('odometer'),
+            );
+        }
+
+        $readings = VehicleOdometerReading::query()
+            ->whereIn('vehicle_id', $vehicleIds)
+            ->where('read_on', '<=', $toDate)
+            ->get(['vehicle_id', 'read_on', 'odometer']);
+
+        foreach ($readings as $row) {
+            $push(
+                (int) $row->getAttribute('vehicle_id'),
+                $row->getAttribute('read_on')?->toDateString(),
+                $row->getAttribute('odometer'),
+            );
+        }
+
+        $result = [];
+
+        foreach ($snapshots as $vehicleId => $items) {
+            if (count($items) < 2) {
+                continue;
+            }
+
+            $end = null;
+            $beforeFrom = null;
+            $minWithin = null;
+
+            foreach ($items as $item) {
+                $date = $item['date'];
+                $odometer = $item['odometer'];
+
+                if ($date <= $toDate) {
+                    $end = $end === null ? $odometer : max($end, $odometer);
+                }
+
+                if ($date < $fromDate) {
+                    $beforeFrom = $beforeFrom === null ? $odometer : max($beforeFrom, $odometer);
+                }
+
+                if ($date >= $fromDate && $date <= $toDate) {
+                    $minWithin = $minWithin === null ? $odometer : min($minWithin, $odometer);
+                }
+            }
+
+            $start = $beforeFrom ?? $minWithin;
+
+            if ($end === null || $start === null) {
+                continue;
+            }
+
+            $result[$vehicleId] = max(0, $end - $start);
         }
 
         return $result;
@@ -612,18 +738,14 @@ final class DreBuilder
             return $weights;
         }
 
-        $kmRows = Fueling::query()
-            ->whereIn('vehicle_id', $vehicleIds)
-            ->whereBetween('fueled_at', [$from->startOfDay(), $to->endOfDay()])
-            ->whereNotNull('km_since_last')
-            ->groupBy('vehicle_id')
-            ->selectRaw('vehicle_id, SUM(km_since_last) as total_km')
-            ->pluck('total_km', 'vehicle_id');
+        // Rateio por km usa a distância por hodômetro — a mesma base do R$/km
+        // e das reservas, para o veículo não ser rateado por dois "km" diferentes.
+        $distanceByVehicle = $this->loadDistanceByVehicle($vehicleIds, $from, $to);
 
         $weights = [];
 
         foreach ($vehicleIds as $vehicleId) {
-            $weights[$vehicleId] = max((int) ($kmRows[$vehicleId] ?? 0), 0);
+            $weights[$vehicleId] = max($distanceByVehicle[$vehicleId] ?? 0, 0);
         }
 
         return $weights;
@@ -752,8 +874,10 @@ final class DreBuilder
      *     groups_cents: array<string, int>,
      *     metrics: array<string, int>,
      *     km: int,
+     *     consumption_km: int,
      *     liters: float,
-     *     reserves: array{oil_cents: int, tire_cents: int, prudential_cents: int, driver_salary_cents: int, owner_prolabore_cents: int, total_cents: int, params: array<string, float|int>},
+     *     reserves: array{oil_cents: int, tire_cents: int, prudential_cents: int, driver_salary_cents: int, prolabore_cents: int, total_cents: int, params: array<string, float|int>},
+     *     result_before_reserves_cents: int,
      *     economic_result_cents: int,
      *     apportionment: array{basis_value: int, basis_percent: float}
      * }>  $vehicles
@@ -775,7 +899,8 @@ final class DreBuilder
      *     consumption: float|null,
      *     per_km: array{revenue: float, cost: float, breakeven: float|null},
      *     breakeven_km: int|null,
-     *     reserves: array{oil_cents: int, tire_cents: int, prudential_cents: int, driver_salary_cents: int, owner_prolabore_cents: int, total_cents: int},
+     *     reserves: array{oil_cents: int, tire_cents: int, prudential_cents: int, driver_salary_cents: int, prolabore_cents: int, total_cents: int},
+     *     result_before_reserves_cents: int,
      *     economic_result_cents: int
      * }
      */
@@ -787,10 +912,11 @@ final class DreBuilder
             'tire_cents' => 0,
             'prudential_cents' => 0,
             'driver_salary_cents' => 0,
-            'owner_prolabore_cents' => 0,
+            'prolabore_cents' => 0,
             'total_cents' => 0,
         ];
         $economicResult = 0;
+        $resultBeforeReserves = 0;
         $metrics = [
             'gross_revenue_cents' => 0,
             'deductions_cents' => 0,
@@ -805,6 +931,7 @@ final class DreBuilder
         ];
 
         $km = 0;
+        $consumptionKm = 0;
         $liters = 0.0;
 
         foreach ($vehicles as $vehicle) {
@@ -817,12 +944,14 @@ final class DreBuilder
             }
 
             $km += $vehicle['km'];
+            $consumptionKm += $vehicle['consumption_km'];
             $liters += $vehicle['liters'];
 
             foreach ($reserves as $key => $value) {
                 $reserves[$key] = $value + (int) $vehicle['reserves'][$key];
             }
 
+            $resultBeforeReserves += (int) $vehicle['result_before_reserves_cents'];
             $economicResult += (int) $vehicle['economic_result_cents'];
         }
 
@@ -832,10 +961,11 @@ final class DreBuilder
             ...$metrics,
             'km' => $km,
             'liters' => $liters,
-            'consumption' => $liters > 0.0 ? round($km / $liters, 2) : null,
+            'consumption' => $liters > 0.0 ? round($consumptionKm / $liters, 2) : null,
             'per_km' => $this->buildPerKm($metrics, $km),
             'breakeven_km' => $this->buildBreakevenKm($metrics, $km),
             'reserves' => $reserves,
+            'result_before_reserves_cents' => $resultBeforeReserves,
             'economic_result_cents' => $economicResult,
         ];
     }

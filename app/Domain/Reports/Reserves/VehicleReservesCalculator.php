@@ -12,11 +12,9 @@ namespace App\Domain\Reports\Reserves;
  * casar com a convenção do restante do DRE.
  *
  * Bases (confirmadas com o cliente):
- *  - pneu   = preço do jogo ÷ vida útil (R$/km) × km rodados
- *  - óleo   = custo da troca ÷ intervalo (R$/km) × km rodados
- *  - prudencial = % da receita líquida (só quando positiva)
- *  - salário do motorista = R$/mês × meses do período
- *  - pró-labore do dono   = R$/mês × meses do período
+ *  - óleo, pneus e prudencial = R$/km × km rodados (distância por hodômetro)
+ *  - salário do motorista      = R$/mês × meses do período
+ *  - pró-labore/retirada do dono = % da receita líquida (só quando positiva)
  */
 final class VehicleReservesCalculator
 {
@@ -26,7 +24,7 @@ final class VehicleReservesCalculator
      *     tire_cents: int,
      *     prudential_cents: int,
      *     driver_salary_cents: int,
-     *     owner_prolabore_cents: int,
+     *     prolabore_cents: int,
      *     total_cents: int
      * }
      */
@@ -36,30 +34,25 @@ final class VehicleReservesCalculator
         float $months,
         int $netRevenueCents,
     ): array {
-        $tire = ($params->tireLifeKm > 0 && $km > 0)
-            ? (int) round(($params->tireSetPriceCents / $params->tireLifeKm) * $km)
-            : 0;
-
-        $oil = ($params->oilIntervalKm > 0 && $km > 0)
-            ? (int) round(($params->oilChangeCostCents / $params->oilIntervalKm) * $km)
-            : 0;
-
-        // Prudencial só sobre receita positiva — não se reserva sobre prejuízo.
-        $prudential = ($params->prudentialPercent > 0.0 && $netRevenueCents > 0)
-            ? (int) round($netRevenueCents * ($params->prudentialPercent / 100))
-            : 0;
+        $oil = $km > 0 ? (int) round($params->oilReservePerKm * $km * 100) : 0;
+        $tire = $km > 0 ? (int) round($params->tireReservePerKm * $km * 100) : 0;
+        $prudential = $km > 0 ? (int) round($params->prudentialReservePerKm * $km * 100) : 0;
 
         $salary = $months > 0.0 ? (int) round($params->driverSalaryCents * $months) : 0;
-        $prolabore = $months > 0.0 ? (int) round($params->ownerProlaboreCents * $months) : 0;
 
-        $total = $tire + $oil + $prudential + $salary + $prolabore;
+        // Pró-labore só sobre receita positiva — não se retira sobre prejuízo.
+        $prolabore = ($params->prolaborePercent > 0.0 && $netRevenueCents > 0)
+            ? (int) round($netRevenueCents * ($params->prolaborePercent / 100))
+            : 0;
+
+        $total = $oil + $tire + $prudential + $salary + $prolabore;
 
         return [
             'oil_cents' => -$oil,
             'tire_cents' => -$tire,
             'prudential_cents' => -$prudential,
             'driver_salary_cents' => -$salary,
-            'owner_prolabore_cents' => -$prolabore,
+            'prolabore_cents' => -$prolabore,
             'total_cents' => -$total,
         ];
     }
