@@ -16,22 +16,24 @@ O DRE atual (ADR-006) agrega **apenas** `financial_entries` com `affects_cashflo
 
 2. **Reserva é camada calculada, fora de `financial_entries`.** As reservas **não** viram lançamento e **não** entram no fluxo de caixa. São calculadas a cada montagem do DRE a partir de parâmetros do veículo. Assim a regra 7 (uma única superfície de agregação de caixa) e o DRE de caixa continuam idênticos.
 
-3. **Parâmetros por veículo, com padrão da empresa.** Tabela `vehicle_cost_parameters`: uma linha com `vehicle_id` nulo é o **padrão da empresa**; uma linha por veículo **sobrescreve** campo a campo (campo nulo herda o padrão; ausência dos dois = zero). Dinheiro em `_cents` (regra 1).
+3. **Parâmetros por veículo, com padrão da empresa.** Tabela `vehicle_cost_parameters`: uma linha com `vehicle_id` nulo é o **padrão da empresa**; uma linha por veículo **sobrescreve** campo a campo (campo nulo herda o padrão; ausência dos dois = zero). Reservas em `decimal(10,4)` R$/km (fração de centavo por km, mesma lógica de preço/litro da regra 1); salário em `_cents`; pró-labore em `decimal(5,2)` percentual.
 
-4. **Bases de cálculo** (confirmadas com o cliente):
-   - **Reserva de pneu** = preço do jogo ÷ vida útil (R$/km) × km rodados no período.
-   - **Reserva de óleo** = custo da troca ÷ intervalo (R$/km) × km rodados.
-   - **Reserva prudencial** = % da receita líquida (só quando positiva — não se reserva sobre prejuízo).
+4. **Bases de cálculo** (confirmadas com o cliente — revisão de 2026-07-19):
+   - **Reserva de óleo** = R$/km × km rodados no período.
+   - **Reserva de pneus** = R$/km × km rodados.
+   - **Reserva prudencial** = R$/km × km rodados.
    - **Salário do motorista (provisão)** = R$/mês × meses do período.
-   - **Pró-labore do dono (provisão)** = R$/mês × meses do período.
+   - **Retirada / pró-labore do dono** = % da receita líquida (só quando positiva — não se retira sobre prejuízo).
 
-   O km usado é o mesmo do DRE (intervalos de tanque cheio fechados, regra 8); sem km, pneu e óleo ficam zerados. Meses são fração de dias por mês do calendário (julho inteiro = 1,0; 1–15/jul = 15/31), sem "mês médio".
+   As três reservas por km passaram de "preço ÷ vida útil" e "% da receita" para **R$/km direto** — é como a planilha do setor (NTC) publica o custo de reposição, e casa com o print de referência do cliente (0,0700 / 0,2513 / 0,2000). O pró-labore passou de R$/mês para **% da receita líquida** (retirada proporcional ao faturamento).
 
-5. **Provisão de salário/pró-labore é sempre imputada.** Independe de haver lançamento manual de 4.1/5.1. Consequência assumida: se o veículo tiver salário lançado **e** provisão configurada, o resultado econômico conta os dois. A tela avisa. (Alternativa "imputar só o que faltar" fica registrada como evolução possível.)
+5. **Km do período vem do hodômetro (híbrido), não do tanque cheio.** A distância que alimenta reservas, R$/km, breakeven e o rateio `by_km` é calculada de snapshots de odômetro reunidos de abastecimentos, manutenções e leituras manuais (`vehicle_odometer_readings`): `km = (última leitura ≤ fim) − (última leitura < início)`. Sem leitura anterior ao período, usa a menor do período (subestima e sinaliza); menos de duas leituras → km desconhecido (não zero). O **consumo (km/l)** continua saindo só de intervalos de tanque cheio fechados (regra 8) — distância e consumo são conceitos separados. Meses são fração de dias por mês do calendário (julho inteiro = 1,0; 1–15/jul = 15/31), sem "mês médio".
+
+6. **Provisão de salário/pró-labore é sempre imputada.** Independe de haver lançamento manual de 4.1/5.1. Consequência assumida: se o veículo tiver salário lançado **e** provisão configurada, o resultado econômico conta os dois. A tela avisa. (Alternativa "imputar só o que faltar" fica registrada como evolução possível.)
 
 ## Consequências
 
-- **`DreBuilder`** ganha, por veículo e no consolidado, o bloco `reserves` (pneu, óleo, prudencial, salário, pró-labore, total — todos em centavos negativos) e `economic_result_cents`. O cálculo puro vive em `App\Domain\Reports\Reserves\VehicleReservesCalculator` (coberto por teste, regra 10).
-- **UI:** o DRE individual mostra a seção "RESERVAS E PROVISÕES" e a linha "= RESULTADO ECONÔMICO" abaixo do resultado de caixa, com drill-down explicando cada fórmula; o comparativo ganha a coluna "Econômico". Tela "Parâmetros de custo" (Análise) edita o padrão da empresa e os overrides por veículo.
+- **`DreBuilder`** ganha, por veículo e no consolidado, o bloco `reserves` (óleo, pneus, prudencial, salário, pró-labore, total — todos em centavos negativos), o subtotal `result_before_reserves_cents` (caixa − salário − pró-labore) e o `economic_result_cents`. A distância vem do novo `loadDistanceByVehicle` (hodômetro). O cálculo puro vive em `App\Domain\Reports\Reserves\VehicleReservesCalculator` (coberto por teste, regra 10).
+- **UI:** o DRE individual segue um fluxo top-down (receita → deduções → custos → resultado de caixa → salário/pró-labore → resultado antes das reservas → reservas por km → **= RESULTADO ECONÔMICO** com selo "Viável"/"Inviável"), com drill-down explicando cada fórmula; o comparativo tem a coluna "Econômico". Tela "Parâmetros de custo" (Análise) edita o padrão da empresa e os overrides por veículo (R$/km + pró-labore %). A tela do veículo registra leituras de hodômetro.
 - **Não-destrutivo e reversível.** Sem parâmetros, `reserves.total_cents = 0` e o resultado econômico é igual ao de caixa — nada muda para quem não usar. A troca de "imputar sempre" por "imputar o que faltar" é aditiva.
 - O banco de demonstração (14.4) deve semear parâmetros realistas, incluindo um veículo com override.

@@ -995,11 +995,14 @@ Toda linha do DRE é clicável e abre um painel lateral com os lançamentos que 
 
 ### 9.8 Resultado econômico — reservas e provisões (ADR-008)
 
-Abaixo do resultado de caixa, o DRE individual mostra uma camada de **reservas e provisões** e um **= RESULTADO ECONÔMICO**. É o custo real de rodar o caminhão pela ótica da planilha de custos do setor: além do que saiu do bolso, quanto deveria estar sendo reservado para os gastos futuros e para uma remuneração justa.
+O DRE individual segue um **fluxo top-down** (como o print de custos do cliente): da receita bruta até o **= RESULTADO ECONÔMICO**, passando pelo resultado de caixa, pelas retiradas (salário e pró-labore) e pelas reservas por km. É o custo real de rodar o caminhão pela ótica da planilha de custos do setor: além do que saiu do bolso, quanto deveria estar sendo reservado para gastos futuros e para uma remuneração justa. O resultado econômico ganha um selo **"Viável"** (> 0) ou **"Inviável"**.
 
-- **Dois resultados, sem contaminar o caixa.** O resultado de caixa é a agregação de `financial_entries` de sempre (intacta). O econômico = caixa − reservas. Reservas **não** viram lançamento e **não** entram no fluxo de caixa.
-- **Camada calculada, não lançada.** As reservas são calculadas na montagem do DRE a partir de `vehicle_cost_parameters` (linha com `vehicle_id` nulo = padrão da empresa; linha por veículo sobrescreve campo a campo). Dinheiro em `_cents`.
-- **Bases:** pneu = preço do jogo ÷ vida útil (R$/km) × km; óleo = custo da troca ÷ intervalo (R$/km) × km; prudencial = % da receita líquida (só positiva); salário do motorista e pró-labore do dono = R$/mês × meses do período (fração de dias por mês). O km é o mesmo do DRE (tanque cheio fechado, regra 8).
+Ordem das linhas: receita bruta → (−) deduções → receita líquida → (−) custos variáveis → margem de contribuição → (−) custos fixos → resultado operacional → (−) rateios → **= resultado líquido (caixa)** → (−) salário do motorista → (−) retirada/pró-labore → **= resultado antes das reservas** → (−) reserva de óleo → (−) reserva de pneus → (−) reserva prudencial → **= RESULTADO ECONÔMICO**.
+
+- **Dois resultados, sem contaminar o caixa.** O resultado de caixa é a agregação de `financial_entries` de sempre (intacta). O econômico = caixa − reservas − retiradas. Reservas/retiradas **não** viram lançamento e **não** entram no fluxo de caixa.
+- **Camada calculada, não lançada.** Calculada na montagem do DRE a partir de `vehicle_cost_parameters` (linha com `vehicle_id` nulo = padrão da empresa; linha por veículo sobrescreve campo a campo). Reservas em `decimal(10,4)` R$/km; salário em `_cents`; pró-labore em `decimal(5,2)` %.
+- **Bases:** óleo, pneus e prudencial = R$/km × km rodados; salário do motorista = R$/mês × meses do período (fração de dias por mês); retirada/pró-labore = % da receita líquida (só positiva).
+- **Km do período por hodômetro (híbrido).** A distância vem de snapshots de odômetro de abastecimentos, manutenções e leituras manuais (`vehicle_odometer_readings`), não do tanque cheio: `km = (última leitura ≤ fim) − (última leitura < início)`; menos de duas leituras → km desconhecido. Alimenta reservas, R$/km, breakeven e o rateio `by_km`. O **consumo (km/l)** continua vindo só de intervalos de tanque cheio (regra 8) — distância ≠ consumo. A tela do veículo registra leituras.
 - **Salário/pró-labore são imputados sempre**, independentemente de lançamento manual — a tela avisa do risco de dupla contagem. Tela "Parâmetros de custo" (Análise) edita padrão e overrides.
 
 Sem parâmetros, `reserves.total = 0` e o econômico é igual ao de caixa — a camada é opt-in. Cálculo puro em `App\Domain\Reports\Reserves\VehicleReservesCalculator` (coberto por teste). Ver ADR-008.
