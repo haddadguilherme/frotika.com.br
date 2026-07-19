@@ -14,8 +14,8 @@
 @section('content')
     <x-ui.page-header title="Painel operacional" subtitle="{{ $periodLabel }} · consolidado da frota">
         <x-slot:actions>
-            <x-ui.button variant="secondary" size="sm">Importar CT-e</x-ui.button>
-            <x-ui.button size="sm">Nova viagem</x-ui.button>
+            {{-- <x-ui.button variant="secondary" size="sm">Importar CT-e</x-ui.button>
+            <x-ui.button size="sm">Nova viagem</x-ui.button> --}}
         </x-slot:actions>
     </x-ui.page-header>
 
