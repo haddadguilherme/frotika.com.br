@@ -17,6 +17,8 @@
     };
 
     $acquisitionDate = old('acquisition_date', $vehicle?->getAttribute('acquisition_date')?->format('Y-m-d'));
+    $selectedType = (string) ($enumVal('type') ?? 'tractor');
+    $showBodyAndVolume = $selectedType !== \App\Domain\Fleet\Enums\VehicleType::Tractor->value;
 @endphp
 
 <div class="space-y-6">
@@ -70,13 +72,15 @@
             <x-ui.input label="Eixos" name="axles" :value="$val('axles')" type="number" inputmode="numeric"
                 min="1" max="12" class="text-right font-mono tabular" placeholder="Opcional" />
 
-            <x-ui.select label="Carroceria" name="body_type">
-                <option value="">—</option>
-                @foreach ($bodyTypes as $bodyType)
-                    <option value="{{ $bodyType->value }}" @selected($enumVal('body_type') === $bodyType->value)>{{ $bodyType->label() }}
-                    </option>
-                @endforeach
-            </x-ui.select>
+            <div data-body-volume-field @class(['hidden' => ! $showBodyAndVolume])>
+                <x-ui.select label="Carroceria" name="body_type">
+                    <option value="">—</option>
+                    @foreach ($bodyTypes as $bodyType)
+                        <option value="{{ $bodyType->value }}" @selected($enumVal('body_type') === $bodyType->value)>{{ $bodyType->label() }}
+                        </option>
+                    @endforeach
+                </x-ui.select>
+            </div>
 
             <x-ui.select label="Combustível" name="fuel_type">
                 <option value="">—</option>
@@ -91,8 +95,10 @@
             <x-ui.input label="Capacidade (kg)" name="capacity_kg" :value="$val('capacity_kg')" type="number" inputmode="numeric"
                 min="0" class="text-right font-mono tabular" placeholder="Opcional" />
 
-            <x-ui.input label="Capacidade (m³)" name="capacity_m3" :value="$val('capacity_m3')" type="number" inputmode="decimal"
-                step="0.001" min="0" class="text-right font-mono tabular" placeholder="Opcional" />
+            <div data-body-volume-field @class(['hidden' => ! $showBodyAndVolume])>
+                <x-ui.input label="Capacidade (m³)" name="capacity_m3" :value="$val('capacity_m3')" type="number" inputmode="decimal"
+                    step="0.001" min="0" class="text-right font-mono tabular" placeholder="Opcional" />
+            </div>
             <x-ui.input label="Tanque (litros)" name="tank_capacity_l" :value="$val('tank_capacity_l')" type="number"
                 inputmode="numeric" min="0" class="text-right font-mono tabular" placeholder="Opcional" />
         </div>
@@ -141,6 +147,26 @@
             plate.addEventListener('input', () => {
                 plate.value = plate.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
             });
+        }
+
+        const type = document.getElementById('type');
+        const bodyVolumeFields = document.querySelectorAll('[data-body-volume-field]');
+
+        const toggleBodyVolumeFields = () => {
+            if (!type) {
+                return;
+            }
+
+            const show = type.value !== '{{ \App\Domain\Fleet\Enums\VehicleType::Tractor->value }}';
+
+            bodyVolumeFields.forEach((field) => {
+                field.classList.toggle('hidden', !show);
+            });
+        };
+
+        if (type) {
+            type.addEventListener('change', toggleBodyVolumeFields);
+            toggleBodyVolumeFields();
         }
     })();
 </script>

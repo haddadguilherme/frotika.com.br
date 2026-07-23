@@ -8,6 +8,9 @@
         \App\Domain\Fleet\Enums\VehicleStatus::Maintenance => 'border-warning-300 bg-warning-50 text-warning-700',
         default => 'border-slate-300 bg-slate-50 text-slate-500',
     };
+
+    $showsBodyAndVolume = $vehicle->type !== \App\Domain\Fleet\Enums\VehicleType::Tractor;
+    $capacityM3 = (float) ($vehicle->getAttribute('capacity_m3') ?? 0);
 @endphp
 
 @section('content')
@@ -84,7 +87,7 @@
             <dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
                 <div>
                     <dt class="text-2xs uppercase tracking-wide text-slate-400">Carroceria</dt>
-                    <dd class="text-slate-900">{{ $vehicle->body_type?->label() ?? '—' }}</dd>
+                    <dd class="text-slate-900">{{ $showsBodyAndVolume ? ($vehicle->body_type?->label() ?? '—') : '—' }}</dd>
                 </div>
                 <div>
                     <dt class="text-2xs uppercase tracking-wide text-slate-400">Combustível</dt>
@@ -110,7 +113,7 @@
                     <dd class="font-mono tabular text-slate-900">
                         {{ collect([
                             $vehicle->getAttribute('capacity_kg') ? $vehicle->getAttribute('capacity_kg') . ' kg' : null,
-                            $vehicle->getAttribute('capacity_m3')
+                            $showsBodyAndVolume && $capacityM3 > 0
                                 ? rtrim(rtrim((string) $vehicle->getAttribute('capacity_m3'), '0'), '.') . ' m³'
                                 : null,
                         ])->filter()->join(' · ') ?:
@@ -120,7 +123,7 @@
                 <div>
                     <dt class="text-2xs uppercase tracking-wide text-slate-400">Hodômetro</dt>
                     <dd class="font-mono tabular text-slate-900">
-                        {{ Format::km((int) $vehicle->getAttribute('odometer_current')) }} km</dd>
+                        {{ Format::km((int) $vehicle->getAttribute('odometer_current')) }}</dd>
                 </div>
             </dl>
         </div>

@@ -266,6 +266,56 @@ final class VehicleManagementTest extends TestCase
         $response->assertDontSee('BBB2B22');
     }
 
+    public function test_exibicao_de_hodometro_mostra_unidade_uma_unica_vez(): void
+    {
+        [$owner, $company] = $this->createOwnerWithCompany();
+
+        $vehicle = app(TenantContext::class)->runFor($company, function (): Vehicle {
+            /** @var Vehicle $vehicle */
+            $vehicle = Vehicle::query()->create([
+                'plate' => 'KMU1N23',
+                'type' => VehicleType::Truck->value,
+                'status' => VehicleStatus::Active->value,
+                'ownership' => VehicleOwnership::Own->value,
+                'odometer_initial' => 1331430,
+            ]);
+
+            $vehicle->setAttribute('odometer_current', 1331430);
+            $vehicle->save();
+
+            return $vehicle;
+        });
+
+        $response = $this->actingAs($owner)->get(route('vehicles.show', ['vehicle' => $vehicle->getKey()]));
+
+        $response->assertOk();
+        $response->assertSee('1.331.430 km');
+        $response->assertDontSee('1.331.430 km km');
+    }
+
+    public function test_exibicao_nao_mostra_m3_para_cavalo_semirreboque(): void
+    {
+        [$owner, $company] = $this->createOwnerWithCompany();
+
+        $vehicle = app(TenantContext::class)->runFor($company, function (): Vehicle {
+            /** @var Vehicle $vehicle */
+            $vehicle = Vehicle::query()->create([
+                'plate' => 'VOL0M30',
+                'type' => VehicleType::Tractor->value,
+                'status' => VehicleStatus::Active->value,
+                'ownership' => VehicleOwnership::Own->value,
+                'capacity_m3' => 12.500,
+            ]);
+
+            return $vehicle;
+        });
+
+        $response = $this->actingAs($owner)->get(route('vehicles.show', ['vehicle' => $vehicle->getKey()]));
+
+        $response->assertOk();
+        $response->assertDontSee('m³');
+    }
+
     private function makeVehicle(Company $company, string $plate, bool $provisioned = false): Vehicle
     {
         return app(TenantContext::class)->runFor($company, function () use ($plate, $provisioned): Vehicle {
