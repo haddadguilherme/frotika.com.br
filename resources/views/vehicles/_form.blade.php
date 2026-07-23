@@ -4,6 +4,7 @@
     $types = \App\Domain\Fleet\Enums\VehicleType::cases();
     $statuses = \App\Domain\Fleet\Enums\VehicleStatus::cases();
     $ownerships = \App\Domain\Fleet\Enums\VehicleOwnership::cases();
+    $financingTypes = \App\Domain\Fleet\Enums\VehicleFinancingType::cases();
     $bodyTypes = \App\Domain\Fleet\Enums\VehicleBodyType::cases();
     $fuelTypes = \App\Domain\Fleet\Enums\VehicleFuelType::cases();
 
@@ -23,6 +24,7 @@
     $selectedType = (string) ($enumVal('type') ?? 'tractor');
     $showBodyAndVolume = $selectedType !== \App\Domain\Fleet\Enums\VehicleType::Tractor->value;
     $isProvisioned = (bool) ($vehicle?->getAttribute('provisioned') ?? false);
+    $isFinanced = (bool) old('is_financed', $vehicle?->getAttribute('is_financed'));
 @endphp
 
 <div class="space-y-6">
@@ -57,13 +59,6 @@
                     <option value="{{ $status->value }}" @selected(($enumVal('status') ?? 'active') === $status->value)>{{ $status->label() }}</option>
                 @endforeach
             </x-ui.select>
-
-            <x-ui.select label="Propriedade" name="ownership" required>
-                @foreach ($ownerships as $ownership)
-                    <option value="{{ $ownership->value }}" @selected(($enumVal('ownership') ?? 'own') === $ownership->value)>{{ $ownership->label() }}
-                    </option>
-                @endforeach
-            </x-ui.select>
         </div>
     </section>
 
@@ -89,6 +84,17 @@
                 class="font-mono tabular" placeholder="Opcional" />
             <x-ui.input label="Eixos" name="axles" :value="$val('axles')" type="number" inputmode="numeric"
                 min="1" max="12" class="text-right font-mono tabular" placeholder="Opcional" />
+
+            <x-ui.input label="Número do motor" name="engine_number" :value="$val('engine_number')" maxlength="60"
+                class="font-mono uppercase" placeholder="Opcional" />
+            <x-ui.input label="Distância entre eixos (m)" name="axle_distance_m" :value="$val('axle_distance_m')" type="number"
+                inputmode="decimal" step="0.01" min="0" max="99.99" class="text-right font-mono tabular"
+                placeholder="Opcional" />
+
+            <x-ui.input label="Quantidade de pneus" name="tire_count" :value="$val('tire_count')" type="number"
+                inputmode="numeric" min="1" max="24" class="text-right font-mono tabular" placeholder="Opcional" />
+            <x-ui.input label="Medida dos pneus" name="tire_size" :value="$val('tire_size')" maxlength="20"
+                class="font-mono uppercase" placeholder="Opcional" />
 
             <div data-body-volume-field @class(['hidden' => ! $showBodyAndVolume])>
                 <x-ui.select label="Carroceria" name="body_type">
@@ -119,6 +125,41 @@
             </div>
             <x-ui.input label="Tanque (litros)" name="tank_capacity_l" :value="$val('tank_capacity_l')" type="number"
                 inputmode="numeric" min="0" class="text-right font-mono tabular" placeholder="Opcional" />
+        </div>
+    </section>
+
+    <section>
+        <h2 class="mb-3 text-sm font-semibold text-slate-900">Propriedade</h2>
+        <div class="grid gap-4 sm:grid-cols-2">
+            <x-ui.select label="Propriedade" name="ownership" required>
+                @foreach ($ownerships as $ownership)
+                    <option value="{{ $ownership->value }}" @selected(($enumVal('ownership') ?? 'own') === $ownership->value)>{{ $ownership->label() }}
+                    </option>
+                @endforeach
+            </x-ui.select>
+
+            <div class="rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5">
+                <label for="is_financed" class="flex items-center justify-between gap-3 text-sm font-medium text-slate-700">
+                    <span>Veículo financiado</span>
+                    <input id="is_financed" type="checkbox" name="is_financed" value="1" @checked($isFinanced)
+                        class="size-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500/30" />
+                </label>
+                <p class="mt-1 text-2xs text-slate-500">Ao marcar, informe o tipo de financiamento e o credor.</p>
+            </div>
+
+            <div data-financing-field @class(['sm:col-span-2', 'hidden' => ! $isFinanced])>
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <x-ui.select label="Tipo de financiamento" name="financing_type">
+                        <option value="">—</option>
+                        @foreach ($financingTypes as $financingType)
+                            <option value="{{ $financingType->value }}" @selected($enumVal('financing_type') === $financingType->value)>{{ $financingType->label() }}</option>
+                        @endforeach
+                    </x-ui.select>
+
+                    <x-ui.input label="Credor" name="creditor_name" :value="$val('creditor_name')" maxlength="120"
+                        placeholder="Opcional" />
+                </div>
+            </div>
         </div>
     </section>
 
@@ -178,6 +219,8 @@
 
         const type = document.getElementById('type');
         const bodyVolumeFields = document.querySelectorAll('[data-body-volume-field]');
+        const financed = document.getElementById('is_financed');
+        const financingFields = document.querySelectorAll('[data-financing-field]');
 
         const toggleBodyVolumeFields = () => {
             if (!type) {
@@ -194,6 +237,21 @@
         if (type) {
             type.addEventListener('change', toggleBodyVolumeFields);
             toggleBodyVolumeFields();
+        }
+
+        const toggleFinancingFields = () => {
+            if (!financed) {
+                return;
+            }
+
+            financingFields.forEach((field) => {
+                field.classList.toggle('hidden', !financed.checked);
+            });
+        };
+
+        if (financed) {
+            financed.addEventListener('change', toggleFinancingFields);
+            toggleFinancingFields();
         }
     })();
 </script>

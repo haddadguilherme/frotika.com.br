@@ -11,6 +11,44 @@
 
     $showsBodyAndVolume = $vehicle->type !== \App\Domain\Fleet\Enums\VehicleType::Tractor;
     $capacityM3 = (float) ($vehicle->getAttribute('capacity_m3') ?? 0);
+    $extraSpecs = array_filter([
+        [
+            'label' => 'Número do motor',
+            'value' => $vehicle->getAttribute('engine_number'),
+            'class' => 'font-mono tabular text-slate-900',
+        ],
+        [
+            'label' => 'Distância entre eixos',
+            'value' => $vehicle->getAttribute('axle_distance_m') !== null
+                ? rtrim(rtrim((string) $vehicle->getAttribute('axle_distance_m'), '0'), '.').' m'
+                : null,
+            'class' => 'font-mono tabular text-slate-900',
+        ],
+        [
+            'label' => 'Quantidade de pneus',
+            'value' => $vehicle->getAttribute('tire_count'),
+            'class' => 'font-mono tabular text-slate-900',
+        ],
+        [
+            'label' => 'Medida dos pneus',
+            'value' => $vehicle->getAttribute('tire_size'),
+            'class' => 'font-mono tabular text-slate-900',
+        ],
+    ], static fn (array $item): bool => $item['value'] !== null && trim((string) $item['value']) !== '');
+
+    $isFinanced = (bool) $vehicle->getAttribute('is_financed');
+    $propertyDetails = array_filter([
+        [
+            'label' => 'Tipo de financiamento',
+            'value' => $vehicle->financing_type?->label(),
+            'class' => 'text-slate-900',
+        ],
+        [
+            'label' => 'Credor',
+            'value' => $vehicle->getAttribute('creditor_name'),
+            'class' => 'text-slate-900',
+        ],
+    ], static fn (array $item): bool => $item['value'] !== null && trim((string) $item['value']) !== '');
     $dueFields = \App\Domain\Fleet\Models\Vehicle::documentDueFields();
 
     $badgeForDueField = function (string $field) use ($vehicle): ?array {
@@ -97,10 +135,6 @@
                     </dd>
                 </div>
                 <div>
-                    <dt class="text-2xs uppercase tracking-wide text-slate-400">Propriedade</dt>
-                    <dd class="text-slate-900">{{ $vehicle->ownership->label() }}</dd>
-                </div>
-                <div>
                     <dt class="text-2xs uppercase tracking-wide text-slate-400">RNTRC</dt>
                     <dd class="font-mono tabular text-slate-900">{{ $vehicle->getAttribute('rntrc') ?: '—' }}</dd>
                 </div>
@@ -114,6 +148,20 @@
                 </div>
             </dl>
         </div>
+
+        @if ($extraSpecs !== [])
+            <div class="rounded-lg border border-slate-200 bg-white p-4">
+                <h2 class="mb-3 text-sm font-semibold text-slate-900">Especificações adicionais</h2>
+                <dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                    @foreach ($extraSpecs as $item)
+                        <div>
+                            <dt class="text-2xs uppercase tracking-wide text-slate-400">{{ $item['label'] }}</dt>
+                            <dd class="{{ $item['class'] }}">{{ $item['value'] }}</dd>
+                        </div>
+                    @endforeach
+                </dl>
+            </div>
+        @endif
 
         <div class="rounded-lg border border-slate-200 bg-white p-4">
             <h2 class="mb-3 text-sm font-semibold text-slate-900">Especificações</h2>
@@ -176,6 +224,28 @@
                         {{ $vehicle->getAttribute('acquisition_value_cents') !== null ? Format::money((int) $vehicle->getAttribute('acquisition_value_cents')) : '—' }}
                     </dd>
                 </div>
+            </dl>
+        </div>
+
+        <div class="rounded-lg border border-slate-200 bg-white p-4 lg:col-span-2">
+            <h2 class="mb-3 text-sm font-semibold text-slate-900">Propriedade</h2>
+            <dl class="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+                <div>
+                    <dt class="text-2xs uppercase tracking-wide text-slate-400">Tipo de propriedade</dt>
+                    <dd class="text-slate-900">{{ $vehicle->ownership->label() }}</dd>
+                </div>
+                <div>
+                    <dt class="text-2xs uppercase tracking-wide text-slate-400">Financiado</dt>
+                    <dd class="text-slate-900">{{ $isFinanced ? 'Sim' : 'Não' }}</dd>
+                </div>
+                @if ($isFinanced)
+                    @foreach ($propertyDetails as $item)
+                        <div>
+                            <dt class="text-2xs uppercase tracking-wide text-slate-400">{{ $item['label'] }}</dt>
+                            <dd class="{{ $item['class'] }}">{{ $item['value'] }}</dd>
+                        </div>
+                    @endforeach
+                @endif
             </dl>
         </div>
 

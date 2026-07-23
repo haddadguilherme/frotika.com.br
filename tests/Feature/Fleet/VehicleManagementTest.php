@@ -433,6 +433,89 @@ final class VehicleManagementTest extends TestCase
         $response->assertSee('Completar cadastro');
     }
 
+    public function test_edicao_salva_bloco_de_especificacoes_e_propriedade(): void
+    {
+        [$owner, $company] = $this->createOwnerWithCompany();
+        $vehicle = $this->makeVehicle($company, 'ESP4P44');
+
+        $this
+            ->actingAs($owner)
+            ->put(route('vehicles.update', ['vehicle' => $vehicle->getKey()]), [
+                'plate' => 'ESP4P44',
+                'type' => VehicleType::Truck->value,
+                'status' => VehicleStatus::Active->value,
+                'ownership' => VehicleOwnership::Leased->value,
+                'brand' => 'Volvo',
+                'model' => 'VM 360',
+                'engine_number' => 'ENG-4455AB',
+                'axle_distance_m' => '4.15',
+                'tire_count' => '10',
+                'tire_size' => '295/80R22.5',
+                'is_financed' => '1',
+                'financing_type' => 'leasing',
+                'creditor_name' => 'Itaú BBA',
+            ])
+            ->assertRedirect();
+
+        $vehicle = $vehicle->refresh();
+
+        $this->assertSame('ENG-4455AB', $vehicle->getAttribute('engine_number'));
+        $this->assertSame('4.15', (string) $vehicle->getAttribute('axle_distance_m'));
+        $this->assertSame(10, (int) $vehicle->getAttribute('tire_count'));
+        $this->assertSame('295/80R22.5', $vehicle->getAttribute('tire_size'));
+        $this->assertTrue((bool) $vehicle->getAttribute('is_financed'));
+        $this->assertSame('leasing', $vehicle->getAttribute('financing_type')?->value);
+        $this->assertSame('Itaú BBA', $vehicle->getAttribute('creditor_name'));
+
+        $show = $this->actingAs($owner)->get(route('vehicles.show', ['vehicle' => $vehicle->getKey()]));
+        $show->assertOk();
+        $show->assertSee('ENG-4455AB');
+        $show->assertSee('4.15 m');
+        $show->assertSee('295/80R22.5');
+        $show->assertSee('Leasing');
+        $show->assertSee('Itaú BBA');
+    }
+
+    public function test_desligar_toggle_de_financiamento_limpa_campos_relacionados(): void
+    {
+        [$owner, $company] = $this->createOwnerWithCompany();
+
+        $vehicle = app(TenantContext::class)->runFor($company, function (): Vehicle {
+            /** @var Vehicle $vehicle */
+            $vehicle = Vehicle::query()->create([
+                'plate' => 'LMP5R55',
+                'type' => VehicleType::Truck->value,
+                'status' => VehicleStatus::Active->value,
+                'ownership' => VehicleOwnership::Own->value,
+                'brand' => 'Scania',
+                'model' => 'R 450',
+                'is_financed' => true,
+                'financing_type' => 'bank_loan',
+                'creditor_name' => 'Banco do Brasil',
+            ]);
+
+            return $vehicle;
+        });
+
+        $this
+            ->actingAs($owner)
+            ->put(route('vehicles.update', ['vehicle' => $vehicle->getKey()]), [
+                'plate' => 'LMP5R55',
+                'type' => VehicleType::Truck->value,
+                'status' => VehicleStatus::Active->value,
+                'ownership' => VehicleOwnership::Own->value,
+                'brand' => 'Scania',
+                'model' => 'R 450',
+            ])
+            ->assertRedirect();
+
+        $vehicle = $vehicle->refresh();
+
+        $this->assertFalse((bool) $vehicle->getAttribute('is_financed'));
+        $this->assertNull($vehicle->getAttribute('financing_type'));
+        $this->assertNull($vehicle->getAttribute('creditor_name'));
+    }
+
     private function makeVehicle(Company $company, string $plate, bool $provisioned = false): Vehicle
     {
         return app(TenantContext::class)->runFor($company, function () use ($plate, $provisioned): Vehicle {
