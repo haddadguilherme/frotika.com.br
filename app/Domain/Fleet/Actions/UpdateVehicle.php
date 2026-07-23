@@ -32,14 +32,17 @@ final class UpdateVehicle
                 ]);
             }
 
+            $wasProvisioned = (bool) $vehicle->getAttribute('provisioned');
             $attributes = $data->toAttributes();
-            // Ao completar o cadastro manualmente, o veículo deixa de ser stub do CT-e.
-            $attributes['provisioned'] = false;
             // odometer_current é denormalizado (viagens/abastecimentos) — não sobrescreve.
             unset($attributes['odometer_current']);
 
             $vehicle->fill($attributes);
             $vehicle->save();
+
+            if ($wasProvisioned && $vehicle->hasMinimumRegistrationData()) {
+                $vehicle->markAsComplete();
+            }
 
             return $vehicle;
         });

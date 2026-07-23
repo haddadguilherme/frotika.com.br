@@ -39,8 +39,10 @@ final class ProvisionVehicleByPlate
                 'plate' => $normalized,
                 'type' => $type->value,
                 'status' => VehicleStatus::Active->value,
-                'provisioned' => true,
             ]);
+
+            $vehicle->setAttribute('provisioned', true);
+            $vehicle->save();
 
             return $vehicle;
         });

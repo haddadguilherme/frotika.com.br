@@ -50,9 +50,21 @@ final class Vehicle extends Model
         'odometer_initial',
         'acquisition_date',
         'acquisition_value_cents',
-        'provisioned',
         'notes',
     ];
+
+    public function hasMinimumRegistrationData(): bool
+    {
+        return trim((string) $this->getAttribute('brand')) !== ''
+            && trim((string) $this->getAttribute('model')) !== ''
+            && $this->getAttribute('type') !== null;
+    }
+
+    public function markAsComplete(): void
+    {
+        $this->setAttribute('provisioned', false);
+        $this->save();
+    }
 
     protected function casts(): array
     {

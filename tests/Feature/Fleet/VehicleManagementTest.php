@@ -187,6 +187,55 @@ final class VehicleManagementTest extends TestCase
         ]);
     }
 
+    public function test_editar_veiculo_provisionado_sem_campos_minimos_mantem_provisionado(): void
+    {
+        [$owner, $company] = $this->createOwnerWithCompany();
+        $vehicle = $this->makeVehicle($company, 'HJK2L45', provisioned: true);
+
+        $this
+            ->actingAs($owner)
+            ->put(route('vehicles.update', ['vehicle' => $vehicle->getKey()]), [
+                'plate' => 'HJK2L45',
+                'type' => VehicleType::Tractor->value,
+                'status' => VehicleStatus::Active->value,
+                'ownership' => VehicleOwnership::Own->value,
+                'brand' => 'Scania',
+                'model' => '',
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('vehicles', [
+            'id' => $vehicle->getKey(),
+            'provisioned' => true,
+        ]);
+    }
+
+    public function test_editar_veiculo_completo_nunca_retorna_para_provisionado(): void
+    {
+        [$owner, $company] = $this->createOwnerWithCompany();
+        $vehicle = $this->makeVehicle($company, 'ZXC3V67', provisioned: false);
+
+        $this
+            ->actingAs($owner)
+            ->put(route('vehicles.update', ['vehicle' => $vehicle->getKey()]), [
+                'plate' => 'ZXC3V67',
+                'type' => VehicleType::Truck->value,
+                'status' => VehicleStatus::Active->value,
+                'ownership' => VehicleOwnership::Own->value,
+                'brand' => 'Iveco',
+                'model' => 'Tector',
+                'provisioned' => true,
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('vehicles', [
+            'id' => $vehicle->getKey(),
+            'provisioned' => false,
+            'brand' => 'Iveco',
+            'model' => 'Tector',
+        ]);
+    }
+
     public function test_desativa_veiculo(): void
     {
         [$owner, $company] = $this->createOwnerWithCompany();
@@ -219,13 +268,22 @@ final class VehicleManagementTest extends TestCase
 
     private function makeVehicle(Company $company, string $plate, bool $provisioned = false): Vehicle
     {
-        return app(TenantContext::class)->runFor($company, fn (): Vehicle => Vehicle::query()->create([
-            'plate' => $plate,
-            'type' => VehicleType::Tractor->value,
-            'status' => VehicleStatus::Active->value,
-            'ownership' => VehicleOwnership::Own->value,
-            'provisioned' => $provisioned,
-        ]));
+        return app(TenantContext::class)->runFor($company, function () use ($plate, $provisioned): Vehicle {
+            /** @var Vehicle $vehicle */
+            $vehicle = Vehicle::query()->create([
+                'plate' => $plate,
+                'type' => VehicleType::Tractor->value,
+                'status' => VehicleStatus::Active->value,
+                'ownership' => VehicleOwnership::Own->value,
+            ]);
+
+            if ($provisioned) {
+                $vehicle->setAttribute('provisioned', true);
+                $vehicle->save();
+            }
+
+            return $vehicle;
+        });
     }
 
     /**
