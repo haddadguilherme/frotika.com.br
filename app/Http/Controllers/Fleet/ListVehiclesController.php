@@ -26,8 +26,14 @@ final class ListVehiclesController
 
         $typeFilter = VehicleType::tryFrom((string) $request->query('type', ''));
         $statusFilter = VehicleStatus::tryFrom((string) $request->query('status', ''));
+        $onlyProvisioned = $request->boolean('provisioned');
+
+        $provisionedCount = Vehicle::query()
+            ->where('provisioned', true)
+            ->count();
 
         $vehicles = Vehicle::query()
+            ->when($onlyProvisioned, fn ($query) => $query->where('provisioned', true))
             ->when($typeFilter !== null, fn ($query) => $query->where('type', $typeFilter?->value))
             ->when($statusFilter !== null, fn ($query) => $query->where('status', $statusFilter?->value))
             ->orderBy('plate')
@@ -38,6 +44,8 @@ final class ListVehiclesController
             'canManage' => Gate::allows('create', Vehicle::class),
             'typeFilter' => $typeFilter,
             'statusFilter' => $statusFilter,
+            'onlyProvisioned' => $onlyProvisioned,
+            'provisionedCount' => $provisionedCount,
         ]);
     }
 }

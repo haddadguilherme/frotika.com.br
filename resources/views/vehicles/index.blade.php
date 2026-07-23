@@ -26,6 +26,32 @@
         @endif
     </div>
 
+    @if ($provisionedCount > 0)
+        <div class="mb-3 flex items-center justify-between gap-2 rounded-md border border-warning-300 bg-warning-50 px-3 py-2">
+            <p class="text-sm font-medium text-warning-700">
+                {{ $provisionedCount }} {{ \Illuminate\Support\Str::plural('veículo', $provisionedCount) }} aguardando cadastro completo.
+            </p>
+            <a href="{{ route('vehicles.index', ['provisioned' => 1]) }}" class="text-sm font-semibold text-warning-800 hover:text-warning-900">
+                Ver provisórios
+            </a>
+        </div>
+    @endif
+
+    <div class="mb-3 flex items-center gap-2">
+        <a href="{{ route('vehicles.index') }}"
+            @class([
+                'inline-flex h-8 items-center rounded-md border px-2.5 text-xs font-semibold uppercase tracking-wide',
+                'border-brand-300 bg-brand-50 text-brand-700' => ! $onlyProvisioned,
+                'border-slate-300 bg-white text-slate-600 hover:border-slate-400' => $onlyProvisioned,
+            ])>Todos</a>
+        <a href="{{ route('vehicles.index', ['provisioned' => 1]) }}"
+            @class([
+                'inline-flex h-8 items-center rounded-md border px-2.5 text-xs font-semibold uppercase tracking-wide',
+                'border-warning-300 bg-warning-50 text-warning-700' => $onlyProvisioned,
+                'border-slate-300 bg-white text-slate-600 hover:border-slate-400' => ! $onlyProvisioned,
+            ])>Provisórios</a>
+    </div>
+
     <div class="rounded-lg border border-slate-200 bg-white">
         <div class="hidden overflow-auto md:block">
             <table class="w-full text-sm">
@@ -46,7 +72,7 @@
                                 <a href="{{ route('vehicles.show', ['vehicle' => $vehicle->getKey()]) }}"
                                     class="font-mono font-medium tabular text-slate-900 hover:text-brand-700">{{ Format::plate($vehicle->getAttribute('plate')) }}</a>
                                 @if ($vehicle->getAttribute('provisioned'))
-                                    <span class="ml-1 inline-flex items-center rounded-full border border-warning-300 bg-warning-50 px-2 py-0.5 text-2xs font-semibold text-warning-700">Provisionado</span>
+                                    <span class="ml-1 inline-flex items-center rounded-full border border-warning-300 bg-warning-50 px-2 py-0.5 text-2xs font-semibold text-warning-700">Cadastro incompleto</span>
                                 @endif
                             </td>
                             <td class="px-3 text-slate-600">{{ $vehicle->type->label() }}</td>
@@ -85,6 +111,9 @@
                         <span class="font-mono font-medium tabular text-slate-900">{{ Format::plate($vehicle->getAttribute('plate')) }}</span>
                         <span class="text-xs text-slate-500">{{ $vehicle->type->label() }}</span>
                     </div>
+                    @if ($vehicle->getAttribute('provisioned'))
+                        <span class="mt-1 inline-flex items-center rounded-full border border-warning-300 bg-warning-50 px-2 py-0.5 text-2xs font-semibold text-warning-700">Cadastro incompleto</span>
+                    @endif
                     <div class="mt-0.5 text-xs text-slate-500">
                         {{ collect([$vehicle->getAttribute('brand'), $vehicle->getAttribute('model')])->filter()->join(' ') ?: 'Sem marca/modelo' }}
                     </div>

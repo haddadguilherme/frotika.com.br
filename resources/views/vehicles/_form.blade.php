@@ -22,20 +22,35 @@
     $anttDueAt = old('antt_due_at', $vehicle?->getAttribute('antt_due_at')?->format('Y-m-d'));
     $selectedType = (string) ($enumVal('type') ?? 'tractor');
     $showBodyAndVolume = $selectedType !== \App\Domain\Fleet\Enums\VehicleType::Tractor->value;
+    $isProvisioned = (bool) ($vehicle?->getAttribute('provisioned') ?? false);
 @endphp
 
 <div class="space-y-6">
     <section>
         <h2 class="mb-3 text-sm font-semibold text-slate-900">Identificação</h2>
         <div class="grid gap-4 sm:grid-cols-2">
-            <x-ui.input label="Placa" name="plate" :value="$val('plate')" maxlength="8" inputmode="text" placeholder="ABC1D23"
-                class="font-mono uppercase tabular" required />
+            <div>
+                <x-ui.input label="Placa" name="plate" :value="$val('plate')" maxlength="8" inputmode="text" placeholder="ABC1D23"
+                    class="font-mono uppercase tabular" required />
+                @if ($isProvisioned)
+                    <p class="mt-1 text-2xs text-warning-700">Placa importada de CT-e. Confira.</p>
+                @endif
+            </div>
 
-            <x-ui.select label="Tipo" name="type" required>
-                @foreach ($types as $type)
-                    <option value="{{ $type->value }}" @selected(($enumVal('type') ?? 'tractor') === $type->value)>{{ $type->label() }}</option>
-                @endforeach
-            </x-ui.select>
+            <div @class([
+                'rounded-md border p-2',
+                'border-warning-300 bg-warning-50/60' => $isProvisioned,
+                'border-transparent' => ! $isProvisioned,
+            ])>
+                <x-ui.select :label="$isProvisioned ? 'Tipo (confirmar)' : 'Tipo'" name="type" required>
+                    @foreach ($types as $type)
+                        <option value="{{ $type->value }}" @selected(($enumVal('type') ?? 'tractor') === $type->value)>{{ $type->label() }}</option>
+                    @endforeach
+                </x-ui.select>
+                @if ($isProvisioned)
+                    <p class="mt-1 text-2xs text-warning-700">O tipo veio de palpite da importação. Revise antes de salvar.</p>
+                @endif
+            </div>
 
             <x-ui.select label="Situação" name="status" required>
                 @foreach ($statuses as $status)

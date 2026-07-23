@@ -12,7 +12,7 @@
 
         @if ($vehicle->getAttribute('provisioned'))
             <div class="mb-4 rounded-md border border-warning-500/40 bg-warning-50 px-4 py-2.5 text-sm text-warning-700">
-                Veículo provisionado automaticamente pela importação de CT-e. Complete os dados abaixo para finalizar o cadastro.
+                Veículo provisionado automaticamente pela importação de CT-e. Confirme placa e tipo, complete os dados e finalize o cadastro.
             </div>
         @endif
 
@@ -24,7 +24,7 @@
 
                 <div class="mt-6 flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 pt-4">
                     <x-ui.link-button href="{{ route('vehicles.show', ['vehicle' => $vehicle->getKey()]) }}" variant="secondary">Cancelar</x-ui.link-button>
-                    <x-ui.button type="submit">Salvar alterações</x-ui.button>
+                    <x-ui.button type="submit">{{ $vehicle->getAttribute('provisioned') ? 'Completar cadastro' : 'Salvar alterações' }}</x-ui.button>
                 </div>
             </form>
         </x-ui.card>

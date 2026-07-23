@@ -373,6 +373,66 @@ final class VehicleManagementTest extends TestCase
         $response->assertSee('text-danger-700', false);
     }
 
+    public function test_veiculo_provisionado_aparece_no_filtro_e_some_ao_completar_cadastro(): void
+    {
+        [$owner, $company] = $this->createOwnerWithCompany();
+        $provisioned = $this->makeVehicle($company, 'PRV1A11', provisioned: true);
+        $this->makeVehicle($company, 'CMP2B22', provisioned: false);
+
+        $filtered = $this->actingAs($owner)->get(route('vehicles.index', ['provisioned' => 1]));
+
+        $filtered->assertOk();
+        $filtered->assertSee('PRV1A11');
+        $filtered->assertDontSee('CMP2B22');
+
+        $this
+            ->actingAs($owner)
+            ->put(route('vehicles.update', ['vehicle' => $provisioned->getKey()]), [
+                'plate' => 'PRV1A11',
+                'type' => VehicleType::Truck->value,
+                'status' => VehicleStatus::Active->value,
+                'ownership' => VehicleOwnership::Own->value,
+                'brand' => 'Scania',
+                'model' => 'R 460',
+            ])
+            ->assertRedirect();
+
+        $filteredAfter = $this->actingAs($owner)->get(route('vehicles.index', ['provisioned' => 1]));
+
+        $filteredAfter->assertOk();
+        $filteredAfter->assertDontSee('PRV1A11');
+    }
+
+    public function test_contador_de_provisorios_respeita_tenant_da_empresa_ativa(): void
+    {
+        [$owner, $company] = $this->createOwnerWithCompany();
+        $this->makeVehicle($company, 'TEN1A11', provisioned: true);
+        $this->makeVehicle($company, 'TEN2B22', provisioned: true);
+
+        $otherOwner = User::factory()->create();
+        $otherGroup = $this->createGroup($otherOwner);
+        $otherCompany = $this->createCompany($otherGroup, '22333444000177');
+        $this->makeVehicle($otherCompany, 'OUT3C33', provisioned: true);
+
+        $response = $this->actingAs($owner)->get(route('vehicles.index'));
+
+        $response->assertOk();
+        $response->assertSee('2 veículos aguardando cadastro completo.');
+        $response->assertDontSee('3 veículos aguardando cadastro completo.');
+    }
+
+    public function test_detalhe_de_veiculo_provisionado_exibe_acao_completar_cadastro(): void
+    {
+        [$owner, $company] = $this->createOwnerWithCompany();
+        $vehicle = $this->makeVehicle($company, 'CTA7D77', provisioned: true);
+
+        $response = $this->actingAs($owner)->get(route('vehicles.show', ['vehicle' => $vehicle->getKey()]));
+
+        $response->assertOk();
+        $response->assertSee('Cadastro incompleto');
+        $response->assertSee('Completar cadastro');
+    }
+
     private function makeVehicle(Company $company, string $plate, bool $provisioned = false): Vehicle
     {
         return app(TenantContext::class)->runFor($company, function () use ($plate, $provisioned): Vehicle {

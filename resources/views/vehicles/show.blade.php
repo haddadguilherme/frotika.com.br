@@ -50,7 +50,7 @@
                     class="inline-flex items-center rounded-full border px-2 py-0.5 text-2xs font-semibold {{ $statusChip }}">{{ $vehicle->status->label() }}</span>
                 @if ($vehicle->getAttribute('provisioned'))
                     <span
-                        class="inline-flex items-center rounded-full border border-warning-300 bg-warning-50 px-2 py-0.5 text-2xs font-semibold text-warning-700">Provisionado</span>
+                        class="inline-flex items-center rounded-full border border-warning-300 bg-warning-50 px-2 py-0.5 text-2xs font-semibold text-warning-700">Cadastro incompleto</span>
                 @endif
             </div>
         </div>
@@ -68,6 +68,17 @@
             </div>
         @endif
     </div>
+
+    @if ($vehicle->getAttribute('provisioned'))
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-warning-300 bg-warning-50 px-4 py-3">
+            <p class="text-sm font-medium text-warning-700">
+                Este veículo foi criado a partir do CT-e e ainda precisa de confirmação dos dados.
+            </p>
+            @if ($canManage)
+                <x-ui.link-button href="{{ route('vehicles.edit', ['vehicle' => $vehicle->getKey()]) }}" variant="primary">Completar cadastro</x-ui.link-button>
+            @endif
+        </div>
+    @endif
 
     <div class="grid gap-4 lg:grid-cols-2">
         <div class="rounded-lg border border-slate-200 bg-white p-4">
