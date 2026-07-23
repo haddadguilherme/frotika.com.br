@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace App\Domain\Fleet\Models;
 
 use App\Domain\Fleet\Enums\VehicleBodyType;
+use App\Domain\Fleet\Enums\VehicleFinancingType;
 use App\Domain\Fleet\Enums\VehicleFuelType;
 use App\Domain\Fleet\Enums\VehicleOwnership;
 use App\Domain\Fleet\Enums\VehicleStatus;
 use App\Domain\Fleet\Enums\VehicleType;
 use App\Support\Tenancy\BelongsToCompany;
+use Database\Factories\VehicleFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -23,6 +26,10 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 final class Vehicle extends Model
 {
     use BelongsToCompany;
+
+    /** @use HasFactory<VehicleFactory> */
+    use HasFactory;
+
     use SoftDeletes;
 
     /**
@@ -40,7 +47,11 @@ final class Vehicle extends Model
         'renavam',
         'chassis',
         'rntrc',
+        'engine_number',
         'axles',
+        'axle_distance_m',
+        'tire_count',
+        'tire_size',
         'body_type',
         'tare_kg',
         'capacity_kg',
@@ -50,6 +61,12 @@ final class Vehicle extends Model
         'odometer_initial',
         'acquisition_date',
         'acquisition_value_cents',
+        'crlv_due_at',
+        'antt_due_at',
+        'insurance_due_at',
+        'is_financed',
+        'financing_type',
+        'creditor_name',
         'notes',
     ];
 
@@ -77,6 +94,8 @@ final class Vehicle extends Model
             'year_manufacture' => 'integer',
             'year_model' => 'integer',
             'axles' => 'integer',
+            'axle_distance_m' => 'decimal:2',
+            'tire_count' => 'integer',
             'tare_kg' => 'integer',
             'capacity_kg' => 'integer',
             'capacity_m3' => 'decimal:3',
@@ -85,7 +104,17 @@ final class Vehicle extends Model
             'odometer_current' => 'integer',
             'acquisition_date' => 'date',
             'acquisition_value_cents' => 'integer',
+            'crlv_due_at' => 'date',
+            'antt_due_at' => 'date',
+            'insurance_due_at' => 'date',
+            'is_financed' => 'boolean',
+            'financing_type' => VehicleFinancingType::class,
             'provisioned' => 'boolean',
         ];
+    }
+
+    protected static function newFactory(): VehicleFactory
+    {
+        return VehicleFactory::new();
     }
 }

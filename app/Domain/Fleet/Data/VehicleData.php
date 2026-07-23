@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Fleet\Data;
 
 use App\Domain\Fleet\Enums\VehicleBodyType;
+use App\Domain\Fleet\Enums\VehicleFinancingType;
 use App\Domain\Fleet\Enums\VehicleFuelType;
 use App\Domain\Fleet\Enums\VehicleOwnership;
 use App\Domain\Fleet\Enums\VehicleStatus;
@@ -24,7 +25,11 @@ final readonly class VehicleData
         public ?string $renavam = null,
         public ?string $chassis = null,
         public ?string $rntrc = null,
+        public ?string $engineNumber = null,
         public ?int $axles = null,
+        public ?float $axleDistanceM = null,
+        public ?int $tireCount = null,
+        public ?string $tireSize = null,
         public ?VehicleBodyType $bodyType = null,
         public ?int $tareKg = null,
         public ?int $capacityKg = null,
@@ -34,6 +39,12 @@ final readonly class VehicleData
         public int $odometerInitial = 0,
         public ?string $acquisitionDate = null,
         public ?int $acquisitionValueCents = null,
+        public ?string $crlvDueAt = null,
+        public ?string $anttDueAt = null,
+        public ?string $insuranceDueAt = null,
+        public bool $isFinanced = false,
+        public ?VehicleFinancingType $financingType = null,
+        public ?string $creditorName = null,
         public ?string $notes = null,
     ) {}
 
@@ -54,7 +65,11 @@ final readonly class VehicleData
             renavam: $data['renavam'] ?? null,
             chassis: $data['chassis'] ?? null,
             rntrc: $data['rntrc'] ?? null,
+            engineNumber: self::nullableString($data['engine_number'] ?? null),
             axles: self::nullableInt($data['axles'] ?? null),
+            axleDistanceM: self::nullableFloat($data['axle_distance_m'] ?? null),
+            tireCount: self::nullableInt($data['tire_count'] ?? null),
+            tireSize: self::nullableString($data['tire_size'] ?? null),
             bodyType: isset($data['body_type']) && $data['body_type'] !== ''
                 ? VehicleBodyType::from((string) $data['body_type'])
                 : null,
@@ -68,6 +83,14 @@ final readonly class VehicleData
             odometerInitial: self::nullableInt($data['odometer_initial'] ?? null) ?? 0,
             acquisitionDate: self::nullableString($data['acquisition_date'] ?? null),
             acquisitionValueCents: self::nullableInt($data['acquisition_value_cents'] ?? null),
+            crlvDueAt: self::nullableString($data['crlv_due_at'] ?? null),
+            anttDueAt: self::nullableString($data['antt_due_at'] ?? null),
+            insuranceDueAt: self::nullableString($data['insurance_due_at'] ?? null),
+            isFinanced: self::nullableBool($data['is_financed'] ?? null) ?? false,
+            financingType: isset($data['financing_type']) && $data['financing_type'] !== ''
+                ? VehicleFinancingType::from((string) $data['financing_type'])
+                : null,
+            creditorName: self::nullableString($data['creditor_name'] ?? null),
             notes: self::nullableString($data['notes'] ?? null),
         );
     }
@@ -89,7 +112,11 @@ final readonly class VehicleData
             'renavam' => $this->renavam,
             'chassis' => $this->chassis,
             'rntrc' => $this->rntrc,
+            'engine_number' => $this->engineNumber,
             'axles' => $this->axles,
+            'axle_distance_m' => $this->axleDistanceM,
+            'tire_count' => $this->tireCount,
+            'tire_size' => $this->tireSize,
             'body_type' => $this->bodyType?->value,
             'tare_kg' => $this->tareKg,
             'capacity_kg' => $this->capacityKg,
@@ -99,6 +126,12 @@ final readonly class VehicleData
             'odometer_initial' => $this->odometerInitial,
             'acquisition_date' => $this->acquisitionDate,
             'acquisition_value_cents' => $this->acquisitionValueCents,
+            'crlv_due_at' => $this->crlvDueAt,
+            'antt_due_at' => $this->anttDueAt,
+            'insurance_due_at' => $this->insuranceDueAt,
+            'is_financed' => $this->isFinanced,
+            'financing_type' => $this->financingType?->value,
+            'creditor_name' => $this->creditorName,
             'notes' => $this->notes,
         ];
     }
@@ -119,6 +152,15 @@ final readonly class VehicleData
         }
 
         return (float) $value;
+    }
+
+    private static function nullableBool(mixed $value): ?bool
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return filter_var($value, FILTER_VALIDATE_BOOL, FILTER_NULL_ON_FAILURE);
     }
 
     private static function nullableString(mixed $value): ?string
